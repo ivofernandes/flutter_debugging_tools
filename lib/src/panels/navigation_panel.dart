@@ -133,7 +133,7 @@ class _RouteStackWidgetState extends State<_RouteStackWidget> {
 ///   builder: (context, child) => DebuggingToolsWrapper(
 ///     child: child,
 ///     showNavigationPanel: true,
-///     // pass _navObserver via extraPanels if needed
+///     historyObserver: _navObserver,
 ///   ),
 /// )
 /// ```

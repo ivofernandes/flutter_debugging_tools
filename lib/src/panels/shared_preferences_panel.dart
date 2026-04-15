@@ -66,6 +66,8 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
     }
 
     final keys = prefs.getKeys().toList()..sort();
+    // Pre-compute all values once to avoid repeated map lookups.
+    final entries = {for (final k in keys) k: prefs.get(k).toString()};
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -80,7 +82,7 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
             ),
             TextButton.icon(
               onPressed: () async {
-                final all = keys.map((k) => '$k: ${prefs.get(k)}').join('\n');
+                final all = entries.entries.map((e) => '${e.key}: ${e.value}').join('\n');
                 Clipboard.setData(ClipboardData(text: all));
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -104,8 +106,9 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
         if (keys.isEmpty)
           const Text('(empty)')
         else
-          ...keys.map((key) {
-            final value = prefs.get(key).toString();
+          ...entries.entries.map((entry) {
+            final key = entry.key;
+            final value = entry.value;
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 4),
               child: Padding(

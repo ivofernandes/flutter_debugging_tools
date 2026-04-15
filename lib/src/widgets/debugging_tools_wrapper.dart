@@ -27,6 +27,21 @@ import 'debugging_settings_button.dart';
 ///
 /// [routes] is forwarded to [NavigationPanel] so route-push buttons appear.
 ///
+/// [historyObserver] is forwarded to [NavigationPanel] to show the live route
+/// stack.  Register the same instance in `MaterialApp.navigatorObservers`:
+///
+/// ```dart
+/// final _navObserver = NavigationHistoryObserver();
+///
+/// MaterialApp(
+///   navigatorObservers: [_navObserver],
+///   builder: (context, child) => DebuggingToolsWrapper(
+///     child: child,
+///     historyObserver: _navObserver,
+///   ),
+/// )
+/// ```
+///
 /// [localStorageBuilder] is forwarded to [LocalStoragePanel] so the host app
 /// can inject its own storage inspection widget.
 class DebuggingToolsWrapper extends StatefulWidget {
@@ -37,6 +52,7 @@ class DebuggingToolsWrapper extends StatefulWidget {
     this.showLocalStoragePanel = true,
     this.extraPanels = const [],
     this.routes = const {},
+    this.historyObserver,
     this.localStorageBuilder,
     this.drawerHeaderText,
     super.key,
@@ -52,6 +68,9 @@ class DebuggingToolsWrapper extends StatefulWidget {
 
   /// Named routes forwarded to [NavigationPanel].
   final Map<String, WidgetBuilder> routes;
+
+  /// Optional observer forwarded to [NavigationPanel] for live route-stack display.
+  final NavigationHistoryObserver? historyObserver;
 
   /// Optional builder forwarded to [LocalStoragePanel].
   final WidgetBuilder? localStorageBuilder;
@@ -77,7 +96,10 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
       if (widget.showNavigationPanel)
         DebugPanelItem(
           'Navigation',
-          NavigationPanel(routes: widget.routes),
+          NavigationPanel(
+            routes: widget.routes,
+            historyObserver: widget.historyObserver,
+          ),
         ),
       if (widget.showLocalStoragePanel)
         DebugPanelItem(
