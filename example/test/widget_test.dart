@@ -1,30 +1,53 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:example/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('switches modes from home and settings', (WidgetTester tester) async {
+    await tester.pumpWidget(const ExampleApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('Current Mode: Demo'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    await tester.tap(find.text('Staging'));
+    await tester.pumpAndSettle();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Current Mode: Staging'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('open-settings-button')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('mode-radio-production')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Production'), findsWidgets);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Current Mode: Production'), findsOneWidget);
+  });
+
+  testWidgets('navigates from catalog list to item details and back home', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const ExampleApp());
+
+    await tester.tap(find.byKey(const Key('open-catalog-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Catalog'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('catalog-item-1')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Network Logs'), findsOneWidget);
+    expect(find.text('Running in Demo mode'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('catalog-item-back-home-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Debugging Tools Example'), findsOneWidget);
+    expect(find.text('Current Mode: Demo'), findsOneWidget);
   });
 }

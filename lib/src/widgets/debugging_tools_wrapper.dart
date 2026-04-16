@@ -32,12 +32,15 @@ import 'debugging_settings_button.dart';
 ///
 /// ```dart
 /// final _navObserver = NavigationHistoryObserver();
+/// final _navigatorKey = GlobalKey<NavigatorState>();
 ///
 /// MaterialApp(
+///   navigatorKey: _navigatorKey,
 ///   navigatorObservers: [_navObserver],
 ///   builder: (context, child) => DebuggingToolsWrapper(
 ///     child: child,
 ///     historyObserver: _navObserver,
+///     navigatorKey: _navigatorKey,
 ///   ),
 /// )
 /// ```
@@ -53,6 +56,7 @@ class DebuggingToolsWrapper extends StatefulWidget {
     this.extraPanels = const [],
     this.routes = const {},
     this.historyObserver,
+    this.navigatorKey,
     this.localStorageBuilder,
     this.drawerHeaderText,
     super.key,
@@ -71,6 +75,9 @@ class DebuggingToolsWrapper extends StatefulWidget {
 
   /// Optional observer forwarded to [NavigationPanel] for live route-stack display.
   final NavigationHistoryObserver? historyObserver;
+
+  /// Optional navigator key used by [NavigationPanel] for route pushes.
+  final GlobalKey<NavigatorState>? navigatorKey;
 
   /// Optional builder forwarded to [LocalStoragePanel].
   final WidgetBuilder? localStorageBuilder;
@@ -99,6 +106,7 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
           NavigationPanel(
             routes: widget.routes,
             historyObserver: widget.historyObserver,
+            navigatorKey: widget.navigatorKey,
           ),
         ),
       if (widget.showLocalStoragePanel)

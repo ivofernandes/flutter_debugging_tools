@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 /// A panel that shows buttons to push named routes, and supports displaying
 /// the navigation history via an optional [NavigationHistoryObserver].
 ///
-/// Pass [routes] as a map of route name → [WidgetBuilder].  A button is
-/// rendered for each entry.  The host app typically passes a subset of its
+/// Pass [routes] as a map of route name → [WidgetBuilder]. A button is
+/// rendered for each entry. The host app typically passes a subset of its
 /// route table so that testers can jump directly to any screen.
+///
+/// When this panel is rendered from a [Drawer], route pushes need a navigator
+/// obtained from [navigatorKey], because the drawer context is not a descendant
+/// of the app's [Navigator].
 ///
 /// To also show the route stack, create a [NavigationHistoryObserver],
 /// register it in `MaterialApp.navigatorObservers`, and pass the same
@@ -14,6 +18,7 @@ class NavigationPanel extends StatefulWidget {
   const NavigationPanel({
     this.routes = const {},
     this.historyObserver,
+    this.navigatorKey,
     super.key,
   });
 
@@ -22,6 +27,10 @@ class NavigationPanel extends StatefulWidget {
 
   /// Optional observer used to display the current navigation stack.
   final NavigationHistoryObserver? historyObserver;
+
+  /// Optional navigator key used for route pushes when this panel is rendered
+  /// outside of the app's Navigator subtree (for example inside a Drawer).
+  final GlobalKey<NavigatorState>? navigatorKey;
 
   @override
   State<NavigationPanel> createState() => _NavigationPanelState();
@@ -59,7 +68,20 @@ class _NavigationPanelState extends State<NavigationPanel> {
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: () {
-                    Navigator.of(context).push<void>(
+                    final navigator =
+                        widget.navigatorKey?.currentState ?? Navigator.maybeOf(context);
+                    if (navigator == null) {
+                      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'No Navigator found. Pass navigatorKey to DebuggingToolsWrapper.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    navigator.push<void>(
                       MaterialPageRoute<void>(
                         builder: entry.value,
                         settings: RouteSettings(name: entry.key),
