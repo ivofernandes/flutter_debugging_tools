@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'shared_preferences_editor.dart';
+import 'shared_preferences_upsert_sheet.dart';
+
 /// Reads ALL keys stored in [SharedPreferences] and presents them in a
 /// scrollable table with per-row delete and a global "Clear All" button.
 ///
 /// Does not depend on any app-specific code; works with any app that uses the
 /// `shared_preferences` package.
 class SharedPreferencesPanel extends StatefulWidget {
-  const SharedPreferencesPanel({super.key});
+  const SharedPreferencesPanel({this.navigatorKey, super.key});
+
+  final GlobalKey<NavigatorState>? navigatorKey;
 
   @override
   State<SharedPreferencesPanel> createState() => _SharedPreferencesPanelState();
@@ -54,6 +59,62 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
     );
   }
 
+  Future<void> _showUpsertSheet({String? existingKey, Object? existingValue}) async {
+    final hostContext = widget.navigatorKey?.currentContext ?? context;
+    if (Navigator.maybeOf(hostContext) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No Navigator available to open editor')),
+      );
+      return;
+    }
+
+    final draft = await showSharedPreferencesUpsertSheet(
+      hostContext: hostContext,
+      existingKey: existingKey,
+      existingValue: existingValue,
+    );
+    if (draft == null) return;
+    final key = draft.key;
+    final rawValue = draft.rawValue;
+    final selectedType = draft.type;
+
+    if (key.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Key is required')),
+      );
+      return;
+    }
+    final validationError = validatePreferenceValue(type: selectedType, rawValue: rawValue);
+    if (validationError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(validationError)));
+      return;
+    }
+
+    final prefs = _prefs;
+    if (prefs == null) return;
+    final ok = await savePreferenceValue(
+      prefs: prefs,
+      key: key,
+      rawValue: rawValue,
+      type: selectedType,
+    );
+
+    if (!mounted) return;
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(existingKey == null ? 'Preference added' : 'Preference updated'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+      await _load();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save preference')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -66,8 +127,7 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
     }
 
     final keys = prefs.getKeys().toList()..sort();
-    // Pre-compute all values once to avoid repeated map lookups.
-    final entries = {for (final k in keys) k: prefs.get(k).toString()};
+    final entries = {for (final k in keys) k: prefs.get(k)};
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -80,9 +140,22 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
+            IconButton(
+              onPressed: _showUpsertSheet,
+              icon: const Icon(Icons.add),
+            ),
+          ],
+        ),
+        Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 8,
+          runSpacing: 4,
+          children: [
             TextButton.icon(
               onPressed: () async {
-                final all = entries.entries.map((e) => '${e.key}: ${e.value}').join('\n');
+                final all = entries.entries
+                    .map((e) => '${e.key}: ${displayPreferenceValue(e.value)}')
+                    .join('\n');
                 Clipboard.setData(ClipboardData(text: all));
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -108,7 +181,7 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
         else
           ...entries.entries.map((entry) {
             final key = entry.key;
-            final value = entry.value;
+            final value = displayPreferenceValue(entry.value);
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 4),
               child: Padding(
@@ -124,6 +197,19 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
                             style: const TextStyle(fontWeight: FontWeight.w600),
                             overflow: TextOverflow.ellipsis,
                           ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 16),
+                          onPressed: () => _showUpsertSheet(
+                            existingKey: key,
+                            existingValue: entry.value,
+                          ),
+                          constraints: const BoxConstraints.tightFor(
+                            width: 32,
+                            height: 32,
+                          ),
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, size: 16),

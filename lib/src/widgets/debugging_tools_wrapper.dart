@@ -97,7 +97,7 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
       if (widget.showSharedPreferencesPanel)
         DebugPanelItem(
           'Shared Preferences',
-          const SharedPreferencesPanel(),
+          SharedPreferencesPanel(navigatorKey: widget.navigatorKey),
           expanded: true,
         ),
       if (widget.showNavigationPanel)
