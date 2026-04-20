@@ -33,7 +33,6 @@ class SharedPreferencesInlineEditor extends StatelessWidget {
             TextField(
               controller: keyController,
               enabled: editingKey == null,
-              enableInteractiveSelection: false,
               decoration: const InputDecoration(labelText: 'Key'),
             ),
             const SizedBox(height: 10),
@@ -57,7 +56,6 @@ class SharedPreferencesInlineEditor extends StatelessWidget {
             const SizedBox(height: 10),
             TextField(
               controller: valueController,
-              enableInteractiveSelection: false,
               maxLines: editorType == PreferenceValueType.stringList ? 2 : 1,
               decoration: InputDecoration(
                 labelText: editorType == PreferenceValueType.stringList

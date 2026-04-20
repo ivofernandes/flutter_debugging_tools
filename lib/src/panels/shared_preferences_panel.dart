@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'shared_preferences_editor.dart';
-import 'shared_preferences_upsert_sheet.dart';
+import 'shared_preferences_inline_editor.dart';
 
 /// Reads ALL keys stored in [SharedPreferences] and presents them in a
 /// scrollable table with per-row delete and a global "Clear All" button.
@@ -22,11 +22,25 @@ class SharedPreferencesPanel extends StatefulWidget {
 class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
   SharedPreferences? _prefs;
   bool _loading = true;
+  bool _isEditorVisible = false;
+  String? _editingKey;
+  late final TextEditingController _keyController;
+  late final TextEditingController _valueController;
+  PreferenceValueType _editorType = PreferenceValueType.string;
 
   @override
   void initState() {
     super.initState();
+    _keyController = TextEditingController();
+    _valueController = TextEditingController();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _keyController.dispose();
+    _valueController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -59,24 +73,31 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
     );
   }
 
-  Future<void> _showUpsertSheet({String? existingKey, Object? existingValue}) async {
-    final hostContext = widget.navigatorKey?.currentContext ?? context;
-    if (Navigator.maybeOf(hostContext) == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No Navigator available to open editor')),
-      );
-      return;
-    }
+  void _startEditing({String? existingKey, Object? existingValue}) {
+    setState(() {
+      _isEditorVisible = true;
+      _editingKey = existingKey;
+      _keyController.text = existingKey ?? '';
+      _valueController.text = existingValue is List<String>
+          ? existingValue.join(', ')
+          : existingValue?.toString() ?? '';
+      _editorType = preferenceTypeFromValue(existingValue);
+    });
+  }
 
-    final draft = await showSharedPreferencesUpsertSheet(
-      hostContext: hostContext,
-      existingKey: existingKey,
-      existingValue: existingValue,
-    );
-    if (draft == null) return;
-    final key = draft.key;
-    final rawValue = draft.rawValue;
-    final selectedType = draft.type;
+  void _cancelEditing() {
+    setState(() {
+      _isEditorVisible = false;
+      _editingKey = null;
+      _keyController.clear();
+      _valueController.clear();
+      _editorType = PreferenceValueType.string;
+    });
+  }
+
+  Future<void> _saveEditing() async {
+    final key = _keyController.text.trim();
+    final rawValue = _valueController.text.trim();
 
     if (key.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -84,7 +105,10 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
       );
       return;
     }
-    final validationError = validatePreferenceValue(type: selectedType, rawValue: rawValue);
+    final validationError = validatePreferenceValue(
+      type: _editorType,
+      rawValue: rawValue,
+    );
     if (validationError != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(validationError)));
       return;
@@ -96,17 +120,18 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
       prefs: prefs,
       key: key,
       rawValue: rawValue,
-      type: selectedType,
+      type: _editorType,
     );
 
     if (!mounted) return;
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(existingKey == null ? 'Preference added' : 'Preference updated'),
+          content: Text(_editingKey == null ? 'Preference added' : 'Preference updated'),
           duration: const Duration(seconds: 1),
         ),
       );
+      _cancelEditing();
       await _load();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -141,11 +166,23 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
               ),
             ),
             IconButton(
-              onPressed: _showUpsertSheet,
+              onPressed: () => _startEditing(),
               icon: const Icon(Icons.add),
             ),
           ],
         ),
+        if (_isEditorVisible)
+          SharedPreferencesInlineEditor(
+            keyController: _keyController,
+            valueController: _valueController,
+            editingKey: _editingKey,
+            editorType: _editorType,
+            onTypeChanged: (value) {
+              setState(() => _editorType = value);
+            },
+            onCancel: _cancelEditing,
+            onSave: _saveEditing,
+          ),
         Wrap(
           alignment: WrapAlignment.end,
           spacing: 8,
@@ -200,7 +237,7 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.edit, size: 16),
-                          onPressed: () => _showUpsertSheet(
+                          onPressed: () => _startEditing(
                             existingKey: key,
                             existingValue: entry.value,
                           ),
