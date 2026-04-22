@@ -44,49 +44,59 @@ class _DebuggingDrawerState extends State<DebuggingDrawer> {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      child: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (widget.headerText != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text(
-                    widget.headerText!,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-              ExpansionPanelList(
-                expansionCallback: (int index, bool isExpanded) {
-                  setState(() {
-                    _panels[index].expanded = isExpanded;
-                  });
-                },
-                children: _panels.map<ExpansionPanel>((DebugPanelItem panel) {
-                  return ExpansionPanel(
-                    headerBuilder: (BuildContext context, bool isExpanded) {
-                      return Container(
-                        alignment: Alignment.centerLeft,
-                        padding: const EdgeInsets.only(left: 16),
-                        child: Text(panel.title),
-                      );
-                    },
-                    body: Padding(
-                      padding: const EdgeInsets.only(
-                        left: 8,
-                        right: 8,
-                        bottom: 16,
-                      ),
-                      child: panel.body,
+      child: HeroControllerScope.none(
+        child: Navigator(
+          onGenerateRoute: (_) {
+            return MaterialPageRoute<void>(
+              builder: (context) {
+                return SafeArea(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (widget.headerText != null)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: Text(
+                              widget.headerText!,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                        ExpansionPanelList(
+                          expansionCallback: (int index, bool isExpanded) {
+                            setState(() {
+                              _panels[index].expanded = isExpanded;
+                            });
+                          },
+                          children: _panels.map<ExpansionPanel>((DebugPanelItem panel) {
+                            return ExpansionPanel(
+                              headerBuilder: (BuildContext context, bool isExpanded) {
+                                return Container(
+                                  alignment: Alignment.centerLeft,
+                                  padding: const EdgeInsets.only(left: 16),
+                                  child: Text(panel.title),
+                                );
+                              },
+                              body: Padding(
+                                padding: const EdgeInsets.only(
+                                  left: 8,
+                                  right: 8,
+                                  bottom: 16,
+                                ),
+                                child: panel.body,
+                              ),
+                              isExpanded: panel.expanded,
+                              canTapOnHeader: true,
+                            );
+                          }).toList(),
+                        ),
+                      ],
                     ),
-                    isExpanded: panel.expanded,
-                    canTapOnHeader: true,
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
+                  ),
+                );
+              },
+            );
+          },
         ),
       ),
     );

@@ -27,6 +27,8 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
   late final TextEditingController _keyController;
   late final TextEditingController _valueController;
   PreferenceValueType _editorType = PreferenceValueType.string;
+  String? _keyErrorText;
+  String? _valueErrorText;
 
   @override
   void initState() {
@@ -82,6 +84,8 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
           ? existingValue.join(', ')
           : existingValue?.toString() ?? '';
       _editorType = preferenceTypeFromValue(existingValue);
+      _keyErrorText = null;
+      _valueErrorText = null;
     });
   }
 
@@ -92,6 +96,8 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
       _keyController.clear();
       _valueController.clear();
       _editorType = PreferenceValueType.string;
+      _keyErrorText = null;
+      _valueErrorText = null;
     });
   }
 
@@ -100,9 +106,9 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
     final rawValue = _valueController.text.trim();
 
     if (key.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Key is required')),
-      );
+      setState(() {
+        _keyErrorText = 'Key is required';
+      });
       return;
     }
     final validationError = validatePreferenceValue(
@@ -110,9 +116,15 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
       rawValue: rawValue,
     );
     if (validationError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(validationError)));
+      setState(() {
+        _valueErrorText = validationError;
+      });
       return;
     }
+    setState(() {
+      _keyErrorText = null;
+      _valueErrorText = null;
+    });
 
     final prefs = _prefs;
     if (prefs == null) return;
@@ -178,7 +190,22 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
             editingKey: _editingKey,
             editorType: _editorType,
             onTypeChanged: (value) {
-              setState(() => _editorType = value);
+              setState(() {
+                _editorType = value;
+                _valueErrorText = null;
+              });
+            },
+            keyErrorText: _keyErrorText,
+            valueErrorText: _valueErrorText,
+            onKeyChanged: (_) {
+              if (_keyErrorText != null) {
+                setState(() => _keyErrorText = null);
+              }
+            },
+            onValueChanged: (_) {
+              if (_valueErrorText != null) {
+                setState(() => _valueErrorText = null);
+              }
             },
             onCancel: _cancelEditing,
             onSave: _saveEditing,

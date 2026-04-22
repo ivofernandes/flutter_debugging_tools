@@ -11,6 +11,10 @@ class SharedPreferencesInlineEditor extends StatelessWidget {
     required this.onTypeChanged,
     required this.onCancel,
     required this.onSave,
+    this.keyErrorText,
+    this.valueErrorText,
+    this.onKeyChanged,
+    this.onValueChanged,
     super.key,
   });
 
@@ -21,6 +25,10 @@ class SharedPreferencesInlineEditor extends StatelessWidget {
   final ValueChanged<PreferenceValueType> onTypeChanged;
   final VoidCallback onCancel;
   final VoidCallback onSave;
+  final String? keyErrorText;
+  final String? valueErrorText;
+  final ValueChanged<String>? onKeyChanged;
+  final ValueChanged<String>? onValueChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +41,11 @@ class SharedPreferencesInlineEditor extends StatelessWidget {
             TextField(
               controller: keyController,
               enabled: editingKey == null,
-              decoration: const InputDecoration(labelText: 'Key'),
+              onChanged: onKeyChanged,
+              decoration: InputDecoration(
+                labelText: 'Key',
+                errorText: keyErrorText,
+              ),
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<PreferenceValueType>(
@@ -57,10 +69,12 @@ class SharedPreferencesInlineEditor extends StatelessWidget {
             TextField(
               controller: valueController,
               maxLines: editorType == PreferenceValueType.stringList ? 2 : 1,
+              onChanged: onValueChanged,
               decoration: InputDecoration(
                 labelText: editorType == PreferenceValueType.stringList
                     ? 'Value (comma-separated)'
                     : 'Value',
+                errorText: valueErrorText,
               ),
             ),
             const SizedBox(height: 8),
