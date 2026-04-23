@@ -1,39 +1,78 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# flutter_debugging_tools
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+`flutter_debugging_tools` is a drop-in developer drawer for Flutter apps that helps teams inspect and mutate runtime state while debugging.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+## Why this package exists
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+When debugging mobile apps, engineers often need to:
+- inspect navigation state,
+- quickly change persisted values,
+- test app behavior against local file changes,
+- poke runtime state machines,
+- run quick network checks.
 
-## Features
+This package provides a consistent debug drawer so those tools can be surfaced in-app with minimal boilerplate.
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+## What you get
 
-## Getting started
+Out of the box, `DebuggingToolsWrapper` can expose:
+- **Navigation panel** (route jump + route metadata)
+- **Shared preferences panel** (inspect/update key-value entries)
+- **Local storage slot** (inject your own storage/file inspector)
+- **Custom panels** for app-specific workflows (state machine controls, network diagnostics, feature flags, etc.)
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
-
-## Usage
-
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+## Quick start
 
 ```dart
-const like = 'sample';
+MaterialApp(
+  builder: (context, child) => DebuggingToolsWrapper(
+    navigatorKey: navigatorKey,
+    showNavigationPanel: true,
+    showSharedPreferencesPanel: true,
+    showLocalStoragePanel: true,
+    routes: {
+      '/': (_) => const HomeScreen(),
+      '/settings': (_) => const SettingsScreen(),
+    },
+    // Optional: inject your own file/storage inspector.
+    localStorageBuilder: (context) => const MyStorageDebugWidget(),
+    // Optional: add custom runtime panels.
+    extraPanels: [
+      CustomConfigPanel.item(
+        title: 'Runtime State',
+        child: const MyRuntimeStateDebugWidget(),
+      ),
+    ],
+    child: child,
+  ),
+)
 ```
 
-## Additional information
+## Integration philosophy (low configuration)
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+Use the package in two steps:
+1. Wrap your app with `DebuggingToolsWrapper`.
+2. Pass only the panels you need.
+
+You can start with navigation + shared preferences only, then progressively add:
+- a local file panel,
+- a network tester panel,
+- a state machine panel.
+
+This keeps the package lightweight for simple apps while still supporting advanced debugging use cases.
+
+## Example app
+
+The `example/` app demonstrates an end-to-end debugging playground:
+- create/edit/delete real files in app documents storage,
+- mutate file contents with slider-driven operations,
+- toggle a runtime workflow state machine,
+- call arbitrary URLs and fetch public IP,
+- inspect and change all the above from the debug drawer.
+
+See: `example/lib/main.dart`.
+
+## Notes
+
+- This package is intended for development/debug builds.
+- For production apps, gate access to debug controls according to your release policy.
