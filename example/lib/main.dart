@@ -54,6 +54,8 @@ class ExampleController extends ChangeNotifier {
 
   String endpoint = 'https://api.ipify.org?format=json';
   String networkOutput = 'No request performed yet.';
+  final DebugHttpClient debugHttpClient = DebugHttpClient();
+  bool _routeNotificationScheduled = false;
 
   bool get hasStorage => _storageDir != null;
   String get storagePath => _storageDir?.path ?? 'Loading...';
@@ -69,7 +71,15 @@ class ExampleController extends ChangeNotifier {
 
   void trackRoute(String routeName) {
     visitedRoutes.add(routeName);
-    notifyListeners();
+    if (_routeNotificationScheduled) {
+      return;
+    }
+
+    _routeNotificationScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _routeNotificationScheduled = false;
+      notifyListeners();
+    });
   }
 
   void setMode(AppMode value) {
@@ -210,7 +220,7 @@ class ExampleController extends ChangeNotifier {
 
     try {
       final uri = Uri.parse(rawUrl);
-      final response = await http.get(uri);
+      final response = await debugHttpClient.get(uri);
       workflow = WorkflowState.success;
       networkOutput = _formatResponse(response);
     } catch (error) {
@@ -239,6 +249,12 @@ class ExampleController extends ChangeNotifier {
     } catch (_) {
       return 'HTTP ${response.statusCode}\n$body';
     }
+  }
+
+  @override
+  void dispose() {
+    debugHttpClient.close();
+    super.dispose();
   }
 }
 
@@ -490,7 +506,7 @@ class NetworkDebugPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return NetworkEditorView(controller: controller, compact: true);
+    return NetworkLogsPanel(client: controller.debugHttpClient, compact: true);
   }
 }
 
@@ -696,9 +712,13 @@ class _NetworkEditorViewState extends State<NetworkEditorView> {
   @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
+    final outputView = SingleChildScrollView(
+      child: SelectableText(controller.networkOutput),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: widget.compact ? MainAxisSize.min : MainAxisSize.max,
       children: [
         TextField(
           controller: _urlController,
@@ -727,11 +747,15 @@ class _NetworkEditorViewState extends State<NetworkEditorView> {
         const SizedBox(height: 8),
         Text('Workflow state: ${controller.workflow.label}'),
         const SizedBox(height: 8),
-        Expanded(
-          child: SingleChildScrollView(
-            child: SelectableText(controller.networkOutput),
+        if (widget.compact)
+          SizedBox(
+            height: 180,
+            child: outputView,
+          )
+        else
+          Expanded(
+            child: outputView,
           ),
-        ),
       ],
     );
   }
