@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_debugging_tools/flutter_debugging_tools.dart';
@@ -14,8 +13,6 @@ void main() {
 enum AppMode { demo, staging, production }
 
 enum WorkflowState { idle, loading, success, failure }
-
-enum FileOperation { appendDots, trimLength, addToNumber }
 
 extension on AppMode {
   String get label => switch (this) {
@@ -34,14 +31,6 @@ extension on WorkflowState {
   };
 }
 
-extension on FileOperation {
-  String get label => switch (this) {
-    FileOperation.appendDots => 'Append dots',
-    FileOperation.trimLength => 'Trim length',
-    FileOperation.addToNumber => 'Add to number',
-  };
-}
-
 class ExampleController extends ChangeNotifier {
   AppMode mode = AppMode.demo;
   WorkflowState workflow = WorkflowState.idle;
@@ -49,8 +38,9 @@ class ExampleController extends ChangeNotifier {
 
   Directory? _storageDir;
   final Map<String, String> files = {};
-  String? selectedFileName;
-  double operationValue = 3;
+  final Set<String> directories = {};
+  String? selectedFilePath;
+  String currentDirectoryPath = '';
 
   String endpoint = 'https://api.ipify.org?format=json';
   String networkOutput = 'No request performed yet.';
@@ -93,19 +83,27 @@ class ExampleController extends ChangeNotifier {
     }
 
     files.clear();
-    final entities = await _storageDir!
-        .list()
-        .where((entity) => entity is File)
-        .cast<File>()
-        .toList();
+    directories
+      ..clear()
+      ..add('');
+    final entities = await _storageDir!.list(recursive: true).toList();
 
-    for (final file in entities) {
-      files[_nameFromPath(file.path)] = await file.readAsString();
+    for (final entity in entities) {
+      if (entity is File) {
+        final relativePath = _relativePath(entity.path);
+        files[relativePath] = await entity.readAsString();
+      } else if (entity is Directory) {
+        directories.add(_relativePath(entity.path));
+      }
     }
 
-    selectedFileName = files.isEmpty ? null : (selectedFileName ?? files.keys.first);
-    if (selectedFileName != null && !files.containsKey(selectedFileName)) {
-      selectedFileName = files.keys.isEmpty ? null : files.keys.first;
+    if (!directories.contains(currentDirectoryPath)) {
+      currentDirectoryPath = '';
+    }
+
+    selectedFilePath = files.isEmpty ? null : (selectedFilePath ?? files.keys.first);
+    if (selectedFilePath != null && !files.containsKey(selectedFilePath)) {
+      selectedFilePath = files.keys.isEmpty ? null : files.keys.first;
     }
     notifyListeners();
   }
@@ -116,13 +114,26 @@ class ExampleController extends ChangeNotifier {
       return;
     }
 
-    await File('${_storageDir!.path}/$safe').writeAsString(content);
-    selectedFileName = safe;
+    final path = _joinPath(currentDirectoryPath, safe);
+    await File('${_storageDir!.path}/$path').writeAsString(content);
+    selectedFilePath = path;
+    await refreshFiles();
+  }
+
+  Future<void> createFolder(String name) async {
+    final safe = name.trim();
+    if (safe.isEmpty || _storageDir == null) {
+      return;
+    }
+
+    final path = _joinPath(currentDirectoryPath, safe);
+    await Directory('${_storageDir!.path}/$path').create(recursive: true);
+    currentDirectoryPath = path;
     await refreshFiles();
   }
 
   Future<void> editFile({
-    required String originalName,
+    required String originalPath,
     required String updatedName,
     required String content,
   }) async {
@@ -135,71 +146,78 @@ class ExampleController extends ChangeNotifier {
       return;
     }
 
-    final oldFile = File('${_storageDir!.path}/$originalName');
-    if (await oldFile.exists() && originalName != newName) {
+    final parentDir = _parentPath(originalPath);
+    final updatedPath = _joinPath(parentDir, newName);
+    final oldFile = File('${_storageDir!.path}/$originalPath');
+    if (await oldFile.exists() && originalPath != updatedPath) {
       await oldFile.delete();
     }
 
-    await File('${_storageDir!.path}/$newName').writeAsString(content);
-    selectedFileName = newName;
+    await File('${_storageDir!.path}/$updatedPath').writeAsString(content);
+    selectedFilePath = updatedPath;
     await refreshFiles();
   }
 
-  Future<void> removeFile(String name) async {
+  Future<void> removeFile(String path) async {
     if (_storageDir == null) {
       return;
     }
 
-    final target = File('${_storageDir!.path}/$name');
+    final target = File('${_storageDir!.path}/$path');
     if (await target.exists()) {
       await target.delete();
     }
     await refreshFiles();
   }
 
-  void setSelectedFile(String? value) {
-    selectedFileName = value;
-    notifyListeners();
-  }
-
-  void setOperationValue(double value) {
-    operationValue = value;
-    notifyListeners();
-  }
-
-  Future<void> applyOperation(FileOperation operation) async {
-    final name = selectedFileName;
-    final dir = _storageDir;
-    if (name == null || dir == null) {
+  Future<void> removeFolder(String path) async {
+    if (_storageDir == null || path.isEmpty) {
       return;
     }
 
-    final file = File('${dir.path}/$name');
-    if (!await file.exists()) {
-      return;
+    final target = Directory('${_storageDir!.path}/$path');
+    if (await target.exists()) {
+      await target.delete(recursive: true);
     }
 
-    final original = await file.readAsString();
-    final amount = operationValue.round();
-    String updated = original;
-
-    switch (operation) {
-      case FileOperation.appendDots:
-        updated = '$original${'.' * amount}';
-      case FileOperation.trimLength:
-        updated = original.substring(0, math.min(original.length, amount));
-      case FileOperation.addToNumber:
-        final number = int.tryParse(original.trim());
-        if (number == null) {
-          networkOutput = 'Cannot add to number: "$name" content is not an integer.';
-          notifyListeners();
-          return;
-        }
-        updated = (number + amount).toString();
+    if (currentDirectoryPath.startsWith(path)) {
+      currentDirectoryPath = '';
     }
 
-    await file.writeAsString(updated);
     await refreshFiles();
+  }
+
+  void setSelectedFile(String? value) {
+    selectedFilePath = value;
+    notifyListeners();
+  }
+
+  void openDirectory(String path) {
+    currentDirectoryPath = path;
+    notifyListeners();
+  }
+
+  void goToParentDirectory() {
+    if (currentDirectoryPath.isEmpty) {
+      return;
+    }
+    currentDirectoryPath = _parentPath(currentDirectoryPath);
+    notifyListeners();
+  }
+
+  List<String> get childDirectories {
+    return directories
+        .where((path) => path.isNotEmpty && _parentPath(path) == currentDirectoryPath)
+        .toList()
+      ..sort((a, b) => a.compareTo(b));
+  }
+
+  List<MapEntry<String, String>> get childFiles {
+    final items = files.entries
+        .where((entry) => _parentPath(entry.key) == currentDirectoryPath)
+        .toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    return items;
   }
 
   void setWorkflow(WorkflowState value) {
@@ -235,7 +253,34 @@ class ExampleController extends ChangeNotifier {
     return fetchUrl(customUrl: 'https://api.ipify.org?format=json');
   }
 
-  String _nameFromPath(String path) => path.split(Platform.pathSeparator).last;
+  String _relativePath(String absolutePath) {
+    final base = _storageDir!.path;
+    final normalizedBase = '$base${Platform.pathSeparator}';
+    if (absolutePath.startsWith(normalizedBase)) {
+      return absolutePath.substring(normalizedBase.length);
+    }
+    return absolutePath;
+  }
+
+  String _joinPath(String left, String right) {
+    if (left.isEmpty) {
+      return right;
+    }
+    return '$left${Platform.pathSeparator}$right';
+  }
+
+  String _parentPath(String path) {
+    if (path.isEmpty) {
+      return '';
+    }
+    final idx = path.lastIndexOf(Platform.pathSeparator);
+    if (idx == -1) {
+      return '';
+    }
+    return path.substring(0, idx);
+  }
+
+  String basename(String path) => path.split(Platform.pathSeparator).last;
 
   String _formatResponse(http.Response response) {
     final body = response.body.length > 400
@@ -522,13 +567,32 @@ class FileEditorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final entries = controller.files.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
-    final selected = controller.selectedFileName;
+    final folders = controller.childDirectories;
+    final files = controller.childFiles;
+    final selected = controller.selectedFilePath;
+    final canGoUp = controller.currentDirectoryPath.isNotEmpty;
+    final selectedBaseName = selected == null ? null : controller.basename(selected);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Storage path: ${controller.storagePath}'),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Current folder: /${controller.currentDirectoryPath}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            IconButton(
+              onPressed: canGoUp ? controller.goToParentDirectory : null,
+              tooltip: 'Go to parent folder',
+              icon: const Icon(Icons.arrow_upward),
+            ),
+          ],
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -544,19 +608,29 @@ class FileEditorView extends StatelessWidget {
               icon: const Icon(Icons.add),
               label: const Text('Create file'),
             ),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final folderName = await _showFolderDialog(context);
+                if (folderName != null) {
+                  await controller.createFolder(folderName);
+                }
+              },
+              icon: const Icon(Icons.create_new_folder_outlined),
+              label: const Text('Create folder'),
+            ),
             OutlinedButton(
-              onPressed: controller.selectedFileName == null
+              onPressed: controller.selectedFilePath == null
                   ? null
                   : () async {
-                      final name = controller.selectedFileName!;
+                      final path = controller.selectedFilePath!;
                       final draft = await _showFileDialog(
                         context,
-                        initialName: name,
-                        initialContent: controller.files[name] ?? '',
+                        initialName: controller.basename(path),
+                        initialContent: controller.files[path] ?? '',
                       );
                       if (draft != null) {
                         await controller.editFile(
-                          originalName: name,
+                          originalPath: path,
                           updatedName: draft.name,
                           content: draft.content,
                         );
@@ -565,10 +639,16 @@ class FileEditorView extends StatelessWidget {
               child: const Text('Edit selected'),
             ),
             OutlinedButton(
-              onPressed: controller.selectedFileName == null
+              onPressed: controller.selectedFilePath == null
                   ? null
-                  : () => controller.removeFile(controller.selectedFileName!),
+                  : () => controller.removeFile(controller.selectedFilePath!),
               child: const Text('Delete selected'),
+            ),
+            OutlinedButton(
+              onPressed: canGoUp
+                  ? () => controller.removeFolder(controller.currentDirectoryPath)
+                  : null,
+              child: const Text('Delete folder'),
             ),
             OutlinedButton(
               onPressed: controller.refreshFiles,
@@ -577,25 +657,34 @@ class FileEditorView extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        if (!compact) const Text('Tap a file to select it:'),
-        if (entries.isEmpty)
+        if (!compact) const Text('Tap a folder to navigate, or a file to select it:'),
+        if (folders.isEmpty && files.isEmpty)
           const Padding(
             padding: EdgeInsets.only(top: 8),
-            child: Text('No files yet.'),
+            child: Text('No files or folders here yet.'),
           )
         else
           SizedBox(
             height: compact ? 140 : 220,
             child: ListView(
               children: [
-                for (final entry in entries)
+                for (final folderPath in folders)
+                  ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.folder_outlined),
+                    title: Text(controller.basename(folderPath)),
+                    subtitle: Text(folderPath),
+                    onTap: () => controller.openDirectory(folderPath),
+                  ),
+                for (final entry in files)
                   ListTile(
                     dense: true,
                     selected: entry.key == selected,
-                    title: Text(entry.key),
+                    leading: const Icon(Icons.description_outlined),
+                    title: Text(controller.basename(entry.key)),
                     subtitle: Text(
                       entry.value,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     onTap: () => controller.setSelectedFile(entry.key),
@@ -604,27 +693,7 @@ class FileEditorView extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 8),
-        const Text('Operation slider:'),
-        Slider(
-          value: controller.operationValue,
-          min: 1,
-          max: 12,
-          divisions: 11,
-          label: controller.operationValue.round().toString(),
-          onChanged: controller.setOperationValue,
-        ),
-        Wrap(
-          spacing: 8,
-          children: [
-            for (final operation in FileOperation.values)
-              OutlinedButton(
-                onPressed: selected == null
-                    ? null
-                    : () => controller.applyOperation(operation),
-                child: Text(operation.label),
-              ),
-          ],
-        ),
+        Text('Selected file: ${selectedBaseName ?? 'none'}'),
       ],
     );
   }
@@ -673,6 +742,37 @@ class FileEditorView extends StatelessWidget {
               );
             },
             child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<String?> _showFolderDialog(BuildContext context) {
+    final nameController = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create folder'),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(labelText: 'Folder name'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final folderName = nameController.text.trim();
+              if (folderName.isEmpty) {
+                return;
+              }
+              Navigator.of(context).pop(folderName);
+            },
+            child: const Text('Create'),
           ),
         ],
       ),
