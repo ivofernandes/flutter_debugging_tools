@@ -1,12 +1,21 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_debugging_tools/flutter_debugging_tools.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
+  if (!kIsWeb &&
+      (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
   runApp(const ExampleApp());
 }
 
@@ -46,6 +55,10 @@ class ExampleController extends ChangeNotifier {
   String networkOutput = 'No request performed yet.';
   final DebugHttpClient debugHttpClient = DebugHttpClient();
   bool _routeNotificationScheduled = false;
+  Database? _database;
+  String dbStatus = 'No database checks run yet.';
+  List<String> dbTables = [];
+  String dbQueryOutput = 'Run a SQLite query to see output.';
 
   bool get hasStorage => _storageDir != null;
   String get storagePath => _storageDir?.path ?? 'Loading...';
@@ -57,6 +70,94 @@ class ExampleController extends ChangeNotifier {
       await _storageDir!.create(recursive: true);
     }
     await refreshFiles();
+    await initializeDummyDatabase();
+  }
+
+  Future<void> initializeDummyDatabase() async {
+    final docs = await getApplicationDocumentsDirectory();
+    final dbPath = p.join(docs.path, 'debug_tool_demo.sqlite');
+    _database = await openDatabase(
+      dbPath,
+      version: 1,
+      onCreate: (db, version) async {
+        await db.execute('''
+          CREATE TABLE debug_events(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            label TEXT NOT NULL,
+            created_at TEXT NOT NULL
+          )
+        ''');
+      },
+    );
+    dbStatus = 'Database ready at: $dbPath';
+    await refreshTables();
+    await runQuery('SELECT * FROM debug_events ORDER BY id DESC LIMIT 5;');
+    notifyListeners();
+  }
+
+  Future<void> insertDummyRow() async {
+    final db = _database;
+    if (db == null) return;
+    await db.insert('debug_events', {
+      'label': 'Dummy ping',
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    await runDatabaseHealthCheck();
+  }
+
+  Future<void> runDatabaseHealthCheck() async {
+    final db = _database;
+    if (db == null) return;
+    final rows = await db.query(
+      'debug_events',
+      orderBy: 'id DESC',
+      limit: 5,
+    );
+    dbStatus = rows.isEmpty
+        ? 'Connected ✅ (table exists, no rows yet).'
+        : 'Connected ✅ (${rows.length} recent rows). Latest: ${rows.first['label']} @ ${rows.first['created_at']}';
+    notifyListeners();
+  }
+
+  Future<void> refreshTables() async {
+    final db = _database;
+    if (db == null) return;
+    final rows = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;",
+    );
+    dbTables = rows.map((row) => '${row['name']}').toList();
+    notifyListeners();
+  }
+
+  Future<void> runQuery(String query) async {
+    final db = _database;
+    final trimmed = query.trim();
+    if (db == null || trimmed.isEmpty) return;
+
+    try {
+      if (trimmed.toUpperCase().startsWith('SELECT')) {
+        final rows = await db.rawQuery(trimmed);
+        dbQueryOutput = const JsonEncoder.withIndent('  ').convert(rows);
+      } else {
+        final changed = await db.rawUpdate(trimmed);
+        dbQueryOutput = 'Statement executed. Changed rows: $changed';
+      }
+      await refreshTables();
+      await runDatabaseHealthCheck();
+    } catch (error) {
+      dbQueryOutput = 'Query failed: $error';
+      notifyListeners();
+    }
+  }
+
+  Future<void> runDefaultInsert() {
+    return runQuery(
+      "INSERT INTO debug_events(label, created_at) VALUES('Quick test insert', '${DateTime.now().toIso8601String()}');",
+    );
+  }
+
+  Future<void> runDefaultSelect() {
+    return runQuery('SELECT * FROM debug_events ORDER BY id DESC LIMIT 10;');
   }
 
   void trackRoute(String routeName) {
@@ -299,6 +400,7 @@ class ExampleController extends ChangeNotifier {
   @override
   void dispose() {
     debugHttpClient.close();
+    _database?.close();
     super.dispose();
   }
 }
@@ -349,6 +451,7 @@ class _ExampleAppState extends State<ExampleApp> {
             '/files': (_) => FilesScreen(controller: _controller),
             '/network': (_) => NetworkScreen(controller: _controller),
             '/state': (_) => StateMachineScreen(controller: _controller),
+            '/database': (_) => DatabaseScreen(controller: _controller),
           },
           navigatorObservers: [
             _RouteTracker(onVisited: _controller.trackRoute),
@@ -363,6 +466,7 @@ class _ExampleAppState extends State<ExampleApp> {
               '/files': (_) => FilesScreen(controller: _controller),
               '/network': (_) => NetworkScreen(controller: _controller),
               '/state': (_) => StateMachineScreen(controller: _controller),
+              '/database': (_) => DatabaseScreen(controller: _controller),
             },
             localStorageBuilder: (_) => FileDebugPanel(controller: _controller),
             extraPanels: [
@@ -374,6 +478,10 @@ class _ExampleAppState extends State<ExampleApp> {
               CustomConfigPanel.item(
                 title: 'Network',
                 child: NetworkDebugPanel(controller: _controller),
+              ),
+              CustomConfigPanel.item(
+                title: 'SQLite Health',
+                child: DatabaseDebugPanel(controller: _controller),
               ),
             ],
             drawerHeaderText: '🐛 Debug tools playground',
@@ -432,6 +540,11 @@ class HomeScreen extends StatelessWidget {
           FilledButton.tonal(
             onPressed: () => Navigator.of(context).pushNamed('/network'),
             child: const Text('Open network screen'),
+          ),
+          const SizedBox(height: 8),
+          FilledButton.tonal(
+            onPressed: () => Navigator.of(context).pushNamed('/database'),
+            child: const Text('Open SQLite screen'),
           ),
         ],
       ),
@@ -506,6 +619,23 @@ class NetworkScreen extends StatelessWidget {
   }
 }
 
+class DatabaseScreen extends StatelessWidget {
+  const DatabaseScreen({super.key, required this.controller});
+
+  final ExampleController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('SQLite connection tester')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: DatabaseTesterView(controller: controller),
+      ),
+    );
+  }
+}
+
 class FileDebugPanel extends StatelessWidget {
   const FileDebugPanel({super.key, required this.controller});
 
@@ -552,6 +682,17 @@ class NetworkDebugPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return NetworkLogsPanel(client: controller.debugHttpClient, compact: true);
+  }
+}
+
+class DatabaseDebugPanel extends StatelessWidget {
+  const DatabaseDebugPanel({super.key, required this.controller});
+
+  final ExampleController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return DatabaseTesterView(controller: controller, compact: true);
   }
 }
 
@@ -858,6 +999,117 @@ class _NetworkEditorViewState extends State<NetworkEditorView> {
           ),
       ],
     );
+  }
+}
+
+class DatabaseTesterView extends StatefulWidget {
+  const DatabaseTesterView({
+    super.key,
+    required this.controller,
+    this.compact = false,
+  });
+
+  final ExampleController controller;
+  final bool compact;
+
+  @override
+  State<DatabaseTesterView> createState() => _DatabaseTesterViewState();
+}
+
+class _DatabaseTesterViewState extends State<DatabaseTesterView> {
+  late final TextEditingController _queryController;
+
+  @override
+  void initState() {
+    super.initState();
+    _queryController = TextEditingController(
+      text: 'SELECT * FROM debug_events ORDER BY id DESC LIMIT 10;',
+    );
+  }
+
+  @override
+  void dispose() {
+    _queryController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = widget.controller;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(controller.dbStatus),
+        const SizedBox(height: 8),
+        Text('Tables: ${controller.dbTables.isEmpty ? 'none' : controller.dbTables.join(', ')}'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            FilledButton(
+              onPressed: controller.runDatabaseHealthCheck,
+              child: const Text('Run connection check'),
+            ),
+            OutlinedButton(
+              onPressed: controller.refreshTables,
+              child: const Text('Refresh tables'),
+            ),
+            OutlinedButton(
+              onPressed: controller.runDefaultInsert,
+              child: const Text('Quick test insert'),
+            ),
+            OutlinedButton(
+              onPressed: controller.runDefaultSelect,
+              child: const Text('Quick test select'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _queryController,
+          minLines: 2,
+          maxLines: 5,
+          decoration: const InputDecoration(
+            labelText: 'Custom SQL query',
+            hintText: 'SELECT * FROM debug_events LIMIT 5;',
+          ),
+        ),
+        const SizedBox(height: 8),
+        FilledButton(
+          onPressed: () => controller.runQuery(_queryController.text),
+          child: const Text('Run custom query'),
+        ),
+        const SizedBox(height: 8),
+        if (widget.compact)
+          SizedBox(
+            height: 180,
+            child: _DbOutput(output: controller.dbQueryOutput),
+          )
+        else
+          Expanded(
+            child: _DbOutput(output: controller.dbQueryOutput),
+          ),
+      ],
+    );
+  }
+}
+
+class _DbOutput extends StatelessWidget {
+  const _DbOutput({required this.output});
+
+  final String output;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      color: Colors.black.withValues(alpha: 0.04),
+      child: SingleChildScrollView(
+        child: SelectableText(output),
+            ),
+      );
   }
 }
 
