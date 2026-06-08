@@ -64,8 +64,8 @@ This keeps the package lightweight for simple apps while still supporting advanc
 ## Example app
 
 The `example/` app demonstrates an end-to-end debugging playground:
-- create/edit/delete real files in app documents storage,
-- mutate file contents with slider-driven operations,
+- browse a Finder-like file tree for app documents storage,
+- long-press files and folders to create, edit, rename, or delete items,
 - toggle a runtime workflow state machine,
 - call arbitrary URLs and fetch public IP,
 - inspect and change all the above from the debug drawer.
