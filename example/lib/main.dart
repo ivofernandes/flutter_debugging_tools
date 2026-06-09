@@ -57,11 +57,10 @@ class ExampleController extends ChangeNotifier {
   bool _routeNotificationScheduled = false;
   Database? _database;
   String dbStatus = 'No database checks run yet.';
-  List<String> dbTables = [];
-  String dbQueryOutput = 'Run a SQLite query to see output.';
 
   bool get hasStorage => _storageDir != null;
   String get storagePath => _storageDir?.path ?? 'Loading...';
+  Database? get database => _database;
 
   Future<void> initialize() async {
     final docs = await getApplicationDocumentsDirectory();
@@ -90,9 +89,7 @@ class ExampleController extends ChangeNotifier {
       },
     );
     dbStatus = 'Database ready at: $dbPath';
-    await refreshTables();
-    await runQuery('SELECT * FROM debug_events ORDER BY id DESC LIMIT 5;');
-    notifyListeners();
+    await runDatabaseHealthCheck();
   }
 
   Future<void> insertDummyRow() async {
@@ -117,47 +114,6 @@ class ExampleController extends ChangeNotifier {
         ? 'Connected ✅ (table exists, no rows yet).'
         : 'Connected ✅ (${rows.length} recent rows). Latest: ${rows.first['label']} @ ${rows.first['created_at']}';
     notifyListeners();
-  }
-
-  Future<void> refreshTables() async {
-    final db = _database;
-    if (db == null) return;
-    final rows = await db.rawQuery(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;",
-    );
-    dbTables = rows.map((row) => '${row['name']}').toList();
-    notifyListeners();
-  }
-
-  Future<void> runQuery(String query) async {
-    final db = _database;
-    final trimmed = query.trim();
-    if (db == null || trimmed.isEmpty) return;
-
-    try {
-      if (trimmed.toUpperCase().startsWith('SELECT')) {
-        final rows = await db.rawQuery(trimmed);
-        dbQueryOutput = const JsonEncoder.withIndent('  ').convert(rows);
-      } else {
-        final changed = await db.rawUpdate(trimmed);
-        dbQueryOutput = 'Statement executed. Changed rows: $changed';
-      }
-      await refreshTables();
-      await runDatabaseHealthCheck();
-    } catch (error) {
-      dbQueryOutput = 'Query failed: $error';
-      notifyListeners();
-    }
-  }
-
-  Future<void> runDefaultInsert() {
-    return runQuery(
-      "INSERT INTO debug_events(label, created_at) VALUES('Quick test insert', '${DateTime.now().toIso8601String()}');",
-    );
-  }
-
-  Future<void> runDefaultSelect() {
-    return runQuery('SELECT * FROM debug_events ORDER BY id DESC LIMIT 10;');
   }
 
   void trackRoute(String routeName) {
@@ -1393,7 +1349,7 @@ class _NetworkEditorViewState extends State<NetworkEditorView> {
   }
 }
 
-class DatabaseTesterView extends StatefulWidget {
+class DatabaseTesterView extends StatelessWidget {
   const DatabaseTesterView({
     super.key,
     required this.controller,
@@ -1404,103 +1360,12 @@ class DatabaseTesterView extends StatefulWidget {
   final bool compact;
 
   @override
-  State<DatabaseTesterView> createState() => _DatabaseTesterViewState();
-}
-
-class _DatabaseTesterViewState extends State<DatabaseTesterView> {
-  late final TextEditingController _queryController;
-
-  @override
-  void initState() {
-    super.initState();
-    _queryController = TextEditingController(
-      text: 'SELECT * FROM debug_events ORDER BY id DESC LIMIT 10;',
-    );
-  }
-
-  @override
-  void dispose() {
-    _queryController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final controller = widget.controller;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(controller.dbStatus),
-        const SizedBox(height: 8),
-        Text('Tables: ${controller.dbTables.isEmpty ? 'none' : controller.dbTables.join(', ')}'),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            FilledButton(
-              onPressed: controller.runDatabaseHealthCheck,
-              child: const Text('Run connection check'),
-            ),
-            OutlinedButton(
-              onPressed: controller.refreshTables,
-              child: const Text('Refresh tables'),
-            ),
-            OutlinedButton(
-              onPressed: controller.runDefaultInsert,
-              child: const Text('Quick test insert'),
-            ),
-            OutlinedButton(
-              onPressed: controller.runDefaultSelect,
-              child: const Text('Quick test select'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _queryController,
-          minLines: 2,
-          maxLines: 5,
-          decoration: const InputDecoration(
-            labelText: 'Custom SQL query',
-            hintText: 'SELECT * FROM debug_events LIMIT 5;',
-          ),
-        ),
-        const SizedBox(height: 8),
-        FilledButton(
-          onPressed: () => controller.runQuery(_queryController.text),
-          child: const Text('Run custom query'),
-        ),
-        const SizedBox(height: 8),
-        if (widget.compact)
-          SizedBox(
-            height: 180,
-            child: _DbOutput(output: controller.dbQueryOutput),
-          )
-        else
-          Expanded(
-            child: _DbOutput(output: controller.dbQueryOutput),
-          ),
-      ],
+    return SQLiteBrowserPanel(
+      database: controller.database,
+      compact: compact,
+      onInsertSampleRow: controller.insertDummyRow,
     );
-  }
-}
-
-class _DbOutput extends StatelessWidget {
-  const _DbOutput({required this.output});
-
-  final String output;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(10),
-      color: Colors.black.withValues(alpha: 0.04),
-      child: SingleChildScrollView(
-        child: SelectableText(output),
-            ),
-      );
   }
 }
 

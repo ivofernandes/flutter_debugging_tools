@@ -19,6 +19,7 @@ Out of the box, `DebuggingToolsWrapper` can expose:
 - **Navigation panel** (route jump + route metadata)
 - **Shared preferences panel** (inspect/update key-value entries)
 - **Local storage slot** (inject your own storage/file inspector)
+- **SQLite browser panel** (inspect `sqflite` tables, columns, and rows without writing SQL)
 - **Custom panels** for app-specific workflows (state machine controls, network diagnostics, feature flags, etc.)
 
 ## Quick start
@@ -60,6 +61,26 @@ You can start with navigation + shared preferences only, then progressively add:
 - a state machine panel.
 
 This keeps the package lightweight for simple apps while still supporting advanced debugging use cases.
+
+
+## SQLite browser panel
+
+Apps that use `sqflite` can add the packaged DB Browser-style panel to the debug drawer by passing the app's open database instance:
+
+```dart
+DebuggingToolsWrapper(
+  // ...
+  extraPanels: [
+    CustomConfigPanel.item(
+      title: 'SQLite',
+      child: SQLiteBrowserPanel(database: database),
+    ),
+  ],
+  child: child,
+)
+```
+
+The panel lists tables, shows column metadata, and previews rows. A collapsible SQL console is still available for advanced debugging.
 
 ## Example app
 

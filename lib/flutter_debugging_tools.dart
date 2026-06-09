@@ -6,6 +6,7 @@ export 'src/panels/local_storage_panel.dart';
 export 'src/panels/network_logs_panel.dart';
 export 'src/panels/navigation_panel.dart';
 export 'src/panels/shared_preferences_panel.dart';
+export 'src/panels/sqlite_browser_panel.dart';
 export 'src/widgets/debugging_drawer.dart';
 export 'src/widgets/debugging_settings_button.dart';
 export 'src/widgets/debugging_tools_wrapper.dart';
