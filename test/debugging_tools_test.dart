@@ -1,5 +1,5 @@
-import 'package:debugging_tools/debugging_tools.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_debugging_tools/flutter_debugging_tools.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -24,7 +24,9 @@ void main() {
       expect(find.text('Test Header'), findsOneWidget);
     });
 
-    testWidgets('renders panel titles as expansion panel headers', (WidgetTester tester) async {
+    testWidgets('renders panel titles as expansion panel headers', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -47,7 +49,9 @@ void main() {
       expect(find.text('Panel Two'), findsOneWidget);
     });
 
-    testWidgets('expands panel and shows body when tapped', (WidgetTester tester) async {
+    testWidgets('expands panel and shows body when tapped', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -83,7 +87,11 @@ void main() {
     });
 
     test('respects explicit expanded value', () {
-      final item = DebugPanelItem('title', const SizedBox.shrink(), expanded: true);
+      final item = DebugPanelItem(
+        'title',
+        const SizedBox.shrink(),
+        expanded: true,
+      );
       expect(item.expanded, isTrue);
     });
   });

@@ -18,7 +18,9 @@ This package provides a consistent debug drawer so those tools can be surfaced i
 Out of the box, `DebuggingToolsWrapper` can expose:
 - **Navigation panel** (route jump + route metadata)
 - **Shared preferences panel** (inspect/update key-value entries)
-- **Local storage slot** (inject your own storage/file inspector)
+- **Local storage slot** (inject your own storage inspector)
+- **File-system panel** (browse and edit files under an app-provided directory)
+- **Network request + logs panels** (call URLs, inspect requests, copy cURL)
 - **SQLite browser panel** (inspect `sqflite` tables, columns, and rows without writing SQL)
 - **Custom panels** for app-specific workflows (state machine controls, network diagnostics, feature flags, etc.)
 
@@ -31,11 +33,18 @@ MaterialApp(
     showNavigationPanel: true,
     showSharedPreferencesPanel: true,
     showLocalStoragePanel: true,
+    // Optional: provide a sandbox directory controller to enable the
+    // packaged file browser panel in the drawer.
+    fileSystemController: fileSystemController,
+    // Optional: share one debug client between URL calls and request logs.
+    networkClient: debugHttpClient,
+    showNetworkRequestPanel: true,
+    showNetworkLogsPanel: true,
     routes: {
       '/': (_) => const HomeScreen(),
       '/settings': (_) => const SettingsScreen(),
     },
-    // Optional: inject your own file/storage inspector.
+    // Optional: inject your own app-specific storage inspector.
     localStorageBuilder: (context) => const MyStorageDebugWidget(),
     // Optional: add custom runtime panels.
     extraPanels: [
@@ -56,12 +65,44 @@ Use the package in two steps:
 2. Pass only the panels you need.
 
 You can start with navigation + shared preferences only, then progressively add:
-- a local file panel,
-- a network tester panel,
+- the packaged file-system panel,
+- the packaged network request/log panels,
 - a state machine panel.
 
 This keeps the package lightweight for simple apps while still supporting advanced debugging use cases.
 
+
+## File-system and network panels
+
+The generic file-system panel lives in the package now. The host app only
+provides the root directory it is safe to mutate:
+
+```dart
+final docs = await getApplicationDocumentsDirectory();
+final fileSystemController = FileSystemDebugController(
+  rootDirectory: Directory('${docs.path}/debug_files'),
+);
+await fileSystemController.initialize();
+
+DebuggingToolsWrapper(
+  fileSystemController: fileSystemController,
+  child: child,
+)
+```
+
+For network diagnostics, share a `DebugHttpClient` between app code, the
+packaged request tester, and the log panel:
+
+```dart
+final debugHttpClient = DebugHttpClient();
+
+DebuggingToolsWrapper(
+  networkClient: debugHttpClient,
+  showNetworkRequestPanel: true,
+  showNetworkLogsPanel: true,
+  child: child,
+)
+```
 
 ## SQLite browser panel
 
@@ -85,10 +126,10 @@ The panel lists tables, shows column metadata, and previews rows. A collapsible 
 ## Example app
 
 The `example/` app demonstrates an end-to-end debugging playground:
-- browse a Finder-like file tree for app documents storage,
+- use the packaged Finder-like file tree for app documents storage,
 - long-press files and folders to create, edit, rename, or delete items,
 - toggle a runtime workflow state machine,
-- call arbitrary URLs and fetch public IP,
+- use the packaged network request panel to call arbitrary URLs and fetch public IP,
 - inspect and change all the above from the debug drawer.
 
 See: `example/lib/main.dart`.

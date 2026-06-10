@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../model/debug_panel_item.dart';
+import '../network/debug_http_client.dart';
+import '../panels/file_system_panel.dart';
 import '../panels/local_storage_panel.dart';
 import '../panels/navigation_panel.dart';
+import '../panels/network_logs_panel.dart';
+import '../panels/network_request_panel.dart';
 import '../panels/shared_preferences_panel.dart';
 import 'debugging_drawer.dart';
 import 'debugging_settings_button.dart';
@@ -53,11 +57,16 @@ class DebuggingToolsWrapper extends StatefulWidget {
     this.showSharedPreferencesPanel = true,
     this.showNavigationPanel = true,
     this.showLocalStoragePanel = true,
+    this.showFileSystemPanel = true,
+    this.showNetworkRequestPanel = false,
+    this.showNetworkLogsPanel = false,
     this.extraPanels = const [],
     this.routes = const {},
     this.historyObserver,
     this.navigatorKey,
     this.localStorageBuilder,
+    this.fileSystemController,
+    this.networkClient,
     this.drawerHeaderText,
     super.key,
   });
@@ -66,6 +75,15 @@ class DebuggingToolsWrapper extends StatefulWidget {
   final bool showSharedPreferencesPanel;
   final bool showNavigationPanel;
   final bool showLocalStoragePanel;
+
+  /// Shows the generic file-system browser when [fileSystemController] is set.
+  final bool showFileSystemPanel;
+
+  /// Shows a generic URL caller backed by [networkClient].
+  final bool showNetworkRequestPanel;
+
+  /// Shows request logs captured by [networkClient].
+  final bool showNetworkLogsPanel;
 
   /// Additional custom panels appended after the built-in ones.
   final List<DebugPanelItem> extraPanels;
@@ -81,6 +99,12 @@ class DebuggingToolsWrapper extends StatefulWidget {
 
   /// Optional builder forwarded to [LocalStoragePanel].
   final WidgetBuilder? localStorageBuilder;
+
+  /// Optional controller for the built-in [FileSystemPanel].
+  final FileSystemDebugController? fileSystemController;
+
+  /// Optional client shared by [NetworkRequestPanel] and [NetworkLogsPanel].
+  final DebugHttpClient? networkClient;
 
   /// Optional text shown at the top of the debug drawer.
   final String? drawerHeaderText;
@@ -113,6 +137,30 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
         DebugPanelItem(
           'Local Storage',
           LocalStoragePanel(customBuilder: widget.localStorageBuilder),
+        ),
+      if (widget.showFileSystemPanel && widget.fileSystemController != null)
+        DebugPanelItem(
+          'Files',
+          FileSystemPanel(
+            controller: widget.fileSystemController!,
+            compact: true,
+          ),
+        ),
+      if (widget.showNetworkRequestPanel && widget.networkClient != null)
+        DebugPanelItem(
+          'Network Request',
+          NetworkRequestPanel(
+            client: widget.networkClient!,
+            compact: true,
+          ),
+        ),
+      if (widget.showNetworkLogsPanel && widget.networkClient != null)
+        DebugPanelItem(
+          'Network Logs',
+          NetworkLogsPanel(
+            client: widget.networkClient!,
+            compact: true,
+          ),
         ),
       ...widget.extraPanels,
     ];

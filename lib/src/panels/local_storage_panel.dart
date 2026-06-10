@@ -44,7 +44,8 @@ class LocalStoragePanel extends StatelessWidget {
         const Text(
           'Local storage (SQLite, Hive, Isar, …) is app-specific.\n\n'
           'Inject your own widget by passing a customBuilder to LocalStoragePanel, '
-          'or to DebuggingToolsWrapper.localStorageBuilder.',
+          'or use FileSystemPanel / SQLiteBrowserPanel for packaged file and '
+          'database debugging tools.',
           style: TextStyle(color: Colors.grey),
         ),
         const SizedBox(height: 12),
@@ -53,8 +54,8 @@ class LocalStoragePanel extends StatelessWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
-                  'Provide a customBuilder to LocalStoragePanel '
-                  'to inspect your storage here.',
+                  'Provide a customBuilder for app-specific storage, '
+                  'or pass fileSystemController / SQLiteBrowserPanel.',
                 ),
               ),
             );
