@@ -198,7 +198,7 @@ class _ExampleAppState extends State<ExampleApp> {
                 child: StateMachineDebugPanel(controller: _controller),
               ),
               CustomConfigPanel.item(
-                title: 'SQLite Health',
+                title: 'SQLite',
                 child: DatabaseDebugPanel(controller: _controller),
               ),
             ],
