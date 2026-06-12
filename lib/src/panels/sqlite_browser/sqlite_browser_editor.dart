@@ -4,69 +4,13 @@ Future<void> _showCreateTableDialog(_SQLiteBrowserPanelState state) async {
   final db = state.widget.database;
   if (db == null || state.loading) return;
 
-  final nameController = TextEditingController(text: 'debug_notes');
-  final columnsController = TextEditingController(
-    text: 'id INTEGER PRIMARY KEY AUTOINCREMENT,\n'
-        'label TEXT NOT NULL,\n'
-        'value TEXT,\n'
-        'created_at TEXT DEFAULT CURRENT_TIMESTAMP',
-  );
-
-  final confirmed = await showDialog<bool>(
+  final request = await showDialog<_CreateTableRequest>(
     context: state.context,
-    builder: (context) => AlertDialog(
-      title: const Text('Create SQLite table'),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: 'Table name',
-                  hintText: 'debug_notes',
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: columnsController,
-                minLines: 5,
-                maxLines: 9,
-                decoration: const InputDecoration(
-                  labelText: 'Column definitions',
-                  helperText: 'Everything between CREATE TABLE name (...)',
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Create table'),
-        ),
-      ],
-    ),
+    builder: (context) => const _CreateTableDialog(),
   );
 
-  final tableName = nameController.text.trim();
-  final columnDefinitions = columnsController.text.trim();
-  nameController.dispose();
-  columnsController.dispose();
-
-  if (confirmed != true || tableName.isEmpty || columnDefinitions.isEmpty) {
-    return;
-  }
-
-  await _createTable(state, tableName, columnDefinitions);
+  if (request == null) return;
+  await _createTable(state, request.tableName, request.columnDefinitions);
 }
 
 Future<void> _createTable(
@@ -98,60 +42,22 @@ Future<void> _showAddRowDialog(_SQLiteBrowserPanelState state) async {
   final tableName = state.selectedTable;
   if (tableName == null || state.columns.isEmpty || state.loading) return;
 
-  final controllers = {
-    for (final column in state.columns) column.name: TextEditingController(),
-  };
-
-  final confirmed = await showDialog<bool>(
+  final values = await showDialog<Map<String, Object?>>(
     context: state.context,
-    builder: (context) => AlertDialog(
-      title: Text('Add row to $tableName'),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final column in state.columns) ...[
-                TextField(
-                  controller: controllers[column.name],
-                  decoration: InputDecoration(
-                    labelText: column.name,
-                    helperText: _columnHelperText(column),
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Add row'),
-        ),
-      ],
+    builder: (context) => _RowValuesDialog(
+      title: 'Add row to $tableName',
+      columns: state.columns,
+      actionLabel: 'Add row',
+      fieldValueFor: (_) => '',
+      skipColumn: (column) => false,
+      readOnlyColumn: (_) => false,
+      helperTextFor: _columnHelperText,
+      includeValue: (column, text) =>
+          text.trim().isNotEmpty || _requiresExplicitInsertValue(column),
     ),
   );
 
-  final values = <String, Object?>{};
-  for (final column in state.columns) {
-    final text = controllers[column.name]!.text;
-    if (text.trim().isEmpty && !_requiresExplicitInsertValue(column)) {
-      continue;
-    }
-    values[column.name] = _parseSqlValue(text, column);
-  }
-  for (final controller in controllers.values) {
-    controller.dispose();
-  }
-
-  if (confirmed == true) await _insertRow(state, tableName, values);
+  if (values != null) await _insertRow(state, tableName, values);
 }
 
 Future<void> _insertRow(
@@ -193,63 +99,23 @@ Future<void> _showEditRowDialog(
     return;
   }
 
-  final controllers = {
-    for (final column in state.columns)
-      column.name: TextEditingController(
-        text: _editFieldValue(row[column.name]),
-      ),
-  };
-
-  final confirmed = await showDialog<bool>(
+  final values = await showDialog<Map<String, Object?>>(
     context: state.context,
-    builder: (context) => AlertDialog(
-      title: Text('Edit row in $tableName'),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final column in state.columns) ...[
-                TextField(
-                  controller: controllers[column.name],
-                  readOnly: column.name == primaryKeyColumn.name,
-                  decoration: InputDecoration(
-                    labelText: column.name,
-                    helperText: column.name == primaryKeyColumn.name
-                        ? 'Primary key used to find this row'
-                        : _columnHelperText(column),
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Save changes'),
-        ),
-      ],
+    builder: (context) => _RowValuesDialog(
+      title: 'Edit row in $tableName',
+      columns: state.columns,
+      actionLabel: 'Save changes',
+      fieldValueFor: (column) => _editFieldValue(row[column.name]),
+      skipColumn: (column) => column.name == primaryKeyColumn.name,
+      readOnlyColumn: (column) => column.name == primaryKeyColumn.name,
+      helperTextFor: (column) => column.name == primaryKeyColumn.name
+          ? 'Primary key used to find this row'
+          : _columnHelperText(column),
+      includeValue: (_, __) => true,
     ),
   );
 
-  final values = <String, Object?>{};
-  for (final column in state.columns) {
-    if (column.name == primaryKeyColumn.name) continue;
-    values[column.name] = _parseSqlValue(controllers[column.name]!.text, column);
-  }
-  for (final controller in controllers.values) {
-    controller.dispose();
-  }
-
-  if (confirmed == true) {
+  if (values != null) {
     await _updateRow(
       state,
       tableName,

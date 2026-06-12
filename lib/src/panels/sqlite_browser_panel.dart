@@ -5,11 +5,26 @@ import 'package:sqflite/sqflite.dart';
 
 part 'sqlite_browser/sqlite_browser_actions.dart';
 part 'sqlite_browser/sqlite_browser_editor.dart';
+part 'sqlite_browser/sqlite_browser_table_dialog.dart';
+part 'sqlite_browser/sqlite_browser_dialog_widgets.dart';
+part 'sqlite_browser/sqlite_browser_compact_fields.dart';
+part 'sqlite_browser/sqlite_browser_row_dialog.dart';
 part 'sqlite_browser/sqlite_browser_model.dart';
 part 'sqlite_browser/sqlite_browser_schema.dart';
 part 'sqlite_browser/sqlite_browser_values.dart';
 part 'sqlite_browser/sqlite_browser_view.dart';
 part 'sqlite_browser/sqlite_browser_widgets.dart';
+
+const List<String> _sqliteTypeOptions = [
+  'INTEGER',
+  'TEXT',
+  'REAL',
+  'BLOB',
+  'NUMERIC',
+  'BOOLEAN',
+  'DATE',
+  'DATETIME',
+];
 
 /// A DB Browser for SQLite-style debug panel for apps that use `sqflite`.
 ///
