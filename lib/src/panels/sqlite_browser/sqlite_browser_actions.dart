@@ -12,6 +12,7 @@ Future<void> _refreshBrowser(_SQLiteBrowserPanelState state) async {
       state.columns = [];
       state.rows = [];
       state.rowCount = 0;
+      state.rowOffset = 0;
     });
     return;
   }
@@ -40,6 +41,7 @@ Future<void> _refreshBrowser(_SQLiteBrowserPanelState state) async {
         state.columns = [];
         state.rows = [];
         state.rowCount = 0;
+        state.rowOffset = 0;
       });
     } else {
       await _browseTable(state, selectedTable, showLoading: false);
@@ -56,6 +58,7 @@ Future<void> _browseTable(
   _SQLiteBrowserPanelState state,
   String tableName, {
   bool showLoading = true,
+  int? offset,
 }) async {
   final db = state.widget.database;
   if (db == null || tableName.trim().isEmpty || !state.mounted) return;
@@ -79,12 +82,20 @@ Future<void> _browseTable(
         break;
       }
     }
+    final pageSize = _dataPageSize(state);
+    final requestedOffset = tableName == state.selectedTable
+        ? offset ?? state.rowOffset
+        : 0;
+    final rowOffset = rowCount == 0
+        ? 0
+        : requestedOffset.clamp(0, rowCount - 1).toInt();
     final rows = await db.query(
       tableName,
       orderBy: primaryKeyColumn == null
           ? null
           : '${_quoteIdentifier(primaryKeyColumn)} DESC',
-      limit: state.widget.rowLimit,
+      limit: pageSize,
+      offset: rowOffset,
     );
 
     if (!state.mounted) return;
@@ -93,9 +104,10 @@ Future<void> _browseTable(
       state.columns = columns;
       state.rows = rows;
       state.rowCount = rowCount;
+      state.rowOffset = rowOffset;
       state.queryController.text =
           'SELECT * FROM ${_quoteIdentifier(tableName)} '
-          'LIMIT ${state.widget.rowLimit};';
+          'LIMIT $pageSize OFFSET $rowOffset;';
     });
   } catch (error) {
     if (!state.mounted) return;
@@ -133,4 +145,14 @@ Future<void> _runQuery(_SQLiteBrowserPanelState state, String query) async {
   } finally {
     if (state.mounted) state.updatePanel(() => state.loading = false);
   }
+}
+
+int _dataPageSize(_SQLiteBrowserPanelState state) {
+  final configuredLimit = state.widget.rowLimit <= 0
+      ? 1
+      : state.widget.rowLimit;
+  final preferredPageSize = state.widget.compact ? 5 : 10;
+  return configuredLimit < preferredPageSize
+      ? configuredLimit
+      : preferredPageSize;
 }

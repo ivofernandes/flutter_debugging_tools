@@ -159,6 +159,14 @@ class _ExampleAppState extends State<ExampleApp> {
           AppMode.production => Colors.green,
         };
 
+        final routes = {
+          '/': (_) => HomeScreen(controller: _controller),
+          '/files': (_) => FilesScreen(controller: _controller),
+          '/network': (_) => NetworkScreen(controller: _controller),
+          '/state': (_) => StateMachineScreen(controller: _controller),
+          '/database': (_) => DatabaseScreen(controller: _controller),
+        };
+
         return MaterialApp(
           navigatorKey: _navigatorKey,
           title: 'debugging_tools example',
@@ -166,13 +174,7 @@ class _ExampleAppState extends State<ExampleApp> {
             colorScheme: ColorScheme.fromSeed(seedColor: themeSeed),
             useMaterial3: true,
           ),
-          routes: {
-            '/': (_) => HomeScreen(controller: _controller),
-            '/files': (_) => FilesScreen(controller: _controller),
-            '/network': (_) => NetworkScreen(controller: _controller),
-            '/state': (_) => StateMachineScreen(controller: _controller),
-            '/database': (_) => DatabaseScreen(controller: _controller),
-          },
+          routes: routes,
           navigatorObservers: [_historyObserver],
           builder: (context, child) => DebuggingToolsWrapper(
             showSharedPreferencesPanel: true,
@@ -180,13 +182,7 @@ class _ExampleAppState extends State<ExampleApp> {
             showLocalStoragePanel: false,
             navigatorKey: _navigatorKey,
             historyObserver: _historyObserver,
-            routes: {
-              '/': (_) => HomeScreen(controller: _controller),
-              '/files': (_) => FilesScreen(controller: _controller),
-              '/network': (_) => NetworkScreen(controller: _controller),
-              '/state': (_) => StateMachineScreen(controller: _controller),
-              '/database': (_) => DatabaseScreen(controller: _controller),
-            },
+            routes: routes,
             fileSystemController: _controller.fileSystemController,
             networkClient: _controller.debugHttpClient,
             showNetworkRequestPanel: true,

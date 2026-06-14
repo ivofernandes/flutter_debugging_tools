@@ -49,7 +49,7 @@ class SQLiteBrowserPanel extends StatefulWidget {
   /// Whether the panel is rendered inside a narrow debug drawer.
   final bool compact;
 
-  /// Maximum number of rows loaded when browsing a table.
+  /// Maximum number of rows loaded per paginated data fetch.
   final int rowLimit;
 
   /// Header text for the tables card.
@@ -67,7 +67,6 @@ class _SQLiteBrowserPanelState extends State<SQLiteBrowserPanel> {
   final ScrollController tableScrollController = ScrollController();
   final ScrollController columnScrollController = ScrollController();
   final ScrollController horizontalDataController = ScrollController();
-  final ScrollController verticalDataController = ScrollController();
 
   String status = 'Connect a database to inspect and edit SQLite tables.';
   List<String> tables = [];
@@ -75,6 +74,7 @@ class _SQLiteBrowserPanelState extends State<SQLiteBrowserPanel> {
   List<SQLiteColumnInfo> columns = [];
   List<Map<String, Object?>> rows = [];
   int rowCount = 0;
+  int rowOffset = 0;
   String queryOutput = 'Run a SQLite query to see output.';
   bool loading = false;
   bool showSql = false;
@@ -101,7 +101,6 @@ class _SQLiteBrowserPanelState extends State<SQLiteBrowserPanel> {
     tableScrollController.dispose();
     columnScrollController.dispose();
     horizontalDataController.dispose();
-    verticalDataController.dispose();
     super.dispose();
   }
 
@@ -128,7 +127,7 @@ class _SQLiteBrowserPanelState extends State<SQLiteBrowserPanel> {
         Text(status),
         const SizedBox(height: 8),
         if (widget.compact)
-          SizedBox(height: 600, child: _buildBrowser(this))
+          _buildBrowser(this)
         else
           Expanded(child: _buildBrowser(this)),
         const SizedBox(height: 8),
