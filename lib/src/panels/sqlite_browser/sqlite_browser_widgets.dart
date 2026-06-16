@@ -1,37 +1,95 @@
 part of '../sqlite_browser_panel.dart';
 
-class _DatabaseToolbar extends StatelessWidget {
-  const _DatabaseToolbar({
+class _ConnectionActionsTile extends StatelessWidget {
+  const _ConnectionActionsTile({
+    required this.status,
     required this.loading,
     required this.hasDatabase,
+    required this.expanded,
+    required this.onExpansionChanged,
     required this.onRefresh,
     this.onInsertSampleRow,
+    this.onOpenDatabase,
+    this.onCloseDatabase,
+    this.onSwitchDatabaseFile,
   });
 
+  final String status;
   final bool loading;
   final bool hasDatabase;
+  final bool expanded;
+  final ValueChanged<bool> onExpansionChanged;
   final VoidCallback onRefresh;
   final Future<void> Function()? onInsertSampleRow;
+  final Future<void> Function()? onOpenDatabase;
+  final Future<void> Function()? onCloseDatabase;
+  final Future<void> Function()? onSwitchDatabaseFile;
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        FilledButton.icon(
-          onPressed: loading || !hasDatabase ? null : onRefresh,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Refresh SQLite'),
+    final hasLifecycleActions = onOpenDatabase != null ||
+        onCloseDatabase != null ||
+        onSwitchDatabaseFile != null ||
+        onInsertSampleRow != null;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ExpansionTile(
+        initiallyExpanded: expanded,
+        onExpansionChanged: onExpansionChanged,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        leading: Icon(
+          hasDatabase ? Icons.check_circle_outline : Icons.link_off,
+          color: hasDatabase ? Colors.green : null,
         ),
-        if (onInsertSampleRow != null)
-          OutlinedButton.icon(
-            onPressed: loading || !hasDatabase ? null : onInsertSampleRow,
-            icon: const Icon(Icons.science_outlined),
-            label: const Text('Insert sample row'),
+        title: Text(status),
+        subtitle: hasLifecycleActions
+            ? const Text('Tap to show SQLite connection actions.')
+            : null,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                FilledButton.icon(
+                  onPressed: loading || !hasDatabase ? null : onRefresh,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Refresh SQLite'),
+                ),
+                if (onInsertSampleRow != null)
+                  OutlinedButton.icon(
+                    onPressed:
+                        loading || !hasDatabase ? null : onInsertSampleRow,
+                    icon: const Icon(Icons.science_outlined),
+                    label: const Text('Insert sample row'),
+                  ),
+                if (onOpenDatabase != null)
+                  OutlinedButton.icon(
+                    onPressed: loading || hasDatabase ? null : onOpenDatabase,
+                    icon: const Icon(Icons.power_settings_new),
+                    label: const Text('Open database'),
+                  ),
+                if (onCloseDatabase != null)
+                  OutlinedButton.icon(
+                    onPressed: loading || !hasDatabase ? null : onCloseDatabase,
+                    icon: const Icon(Icons.close),
+                    label: const Text('Close database'),
+                  ),
+                if (onSwitchDatabaseFile != null)
+                  OutlinedButton.icon(
+                    onPressed: loading ? null : onSwitchDatabaseFile,
+                    icon: const Icon(Icons.swap_horiz),
+                    label: const Text('Switch DB file'),
+                  ),
+              ],
+            ),
           ),
-      ],
+        ],
+      ),
     );
   }
 }

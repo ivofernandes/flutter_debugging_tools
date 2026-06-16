@@ -46,6 +46,7 @@ class ExampleController extends ChangeNotifier {
 
   final DebugHttpClient debugHttpClient = DebugHttpClient();
   Database? _database;
+  bool _useAlternateDatabase = false;
   String dbStatus = 'No database checks run yet.';
 
   bool get hasStorage => fileSystemController != null;
@@ -63,7 +64,12 @@ class ExampleController extends ChangeNotifier {
 
   Future<void> initializeDummyDatabase() async {
     final docs = await getApplicationDocumentsDirectory();
-    final dbPath = p.join(docs.path, 'debug_tool_demo.sqlite');
+    final dbPath = p.join(
+      docs.path,
+      _useAlternateDatabase
+          ? 'debug_tool_demo_alternate.sqlite'
+          : 'debug_tool_demo.sqlite',
+    );
     _database = await openDatabase(
       dbPath,
       version: 1,
@@ -79,6 +85,28 @@ class ExampleController extends ChangeNotifier {
     );
     dbStatus = 'Database ready at: $dbPath';
     await runDatabaseHealthCheck();
+  }
+
+  Future<void> openDummyDatabase() async {
+    if (_database != null) return;
+    await initializeDummyDatabase();
+  }
+
+  Future<void> closeDummyDatabase() async {
+    final db = _database;
+    if (db == null) return;
+    await db.close();
+    _database = null;
+    dbStatus = 'Database connection manually closed for debugging.';
+    notifyListeners();
+  }
+
+  Future<void> switchDummyDatabaseFile() async {
+    final db = _database;
+    if (db != null) await db.close();
+    _database = null;
+    _useAlternateDatabase = !_useAlternateDatabase;
+    await initializeDummyDatabase();
   }
 
   Future<void> insertDummyRow() async {
@@ -391,6 +419,9 @@ class DatabaseTesterView extends StatelessWidget {
       database: controller.database,
       compact: compact,
       onInsertSampleRow: controller.insertDummyRow,
+      onOpenDatabase: controller.openDummyDatabase,
+      onCloseDatabase: controller.closeDummyDatabase,
+      onSwitchDatabaseFile: controller.switchDummyDatabaseFile,
     );
   }
 }
