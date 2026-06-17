@@ -1,6 +1,8 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 
 part 'sqlite_browser/sqlite_browser_actions.dart';
@@ -40,6 +42,11 @@ class SQLiteBrowserPanel extends StatefulWidget {
     this.rowLimit = 50,
     this.title = 'Tables',
     this.onInsertSampleRow,
+    this.onOpenDatabase,
+    this.onCloseDatabase,
+    this.currentDatabasePath,
+    this.onSwitchDatabaseFile,
+    this.enableConsoleLogging = !kReleaseMode,
     super.key,
   });
 
@@ -57,6 +64,24 @@ class SQLiteBrowserPanel extends StatefulWidget {
 
   /// Optional app-provided action for seeding a row while debugging.
   final Future<void> Function()? onInsertSampleRow;
+
+  /// Path displayed in connection actions and used as the default path when
+  /// switching database files. Falls back to [Database.path] when available.
+  final String? currentDatabasePath;
+
+  /// Optional app-provided action for opening or reopening the database.
+  final Future<void> Function()? onOpenDatabase;
+
+  /// Optional app-provided action for closing the active database connection.
+  final Future<void> Function()? onCloseDatabase;
+
+  /// Optional app-provided action for pointing the app at a different database
+  /// file, useful for stress-testing connection lifecycle edge cases.
+  final Future<void> Function(String databasePath)? onSwitchDatabaseFile;
+
+  /// Whether SQLite browser lifecycle events and errors should be printed to
+  /// the debug console. Defaults to enabled outside release builds.
+  final bool enableConsoleLogging;
 
   @override
   State<SQLiteBrowserPanel> createState() => _SQLiteBrowserPanelState();
@@ -78,6 +103,7 @@ class _SQLiteBrowserPanelState extends State<SQLiteBrowserPanel> {
   String queryOutput = 'Run a SQLite query to see output.';
   bool loading = false;
   bool showSql = false;
+  bool showConnectionActions = false;
 
   @override
   void initState() {
@@ -106,15 +132,39 @@ class _SQLiteBrowserPanelState extends State<SQLiteBrowserPanel> {
 
   void updatePanel(VoidCallback fn) => setState(fn);
 
+  bool get hasConnectedDatabase => widget.database != null;
+
+  void logDebug(String message) {
+    if (!widget.enableConsoleLogging) return;
+    debugPrint('[SQLiteBrowserPanel] $message');
+  }
+
+  void _clearDisconnectedBrowserState(_SQLiteBrowserPanelState state) {
+    state.updatePanel(() {
+      state.status = 'Connect a database to inspect and edit SQLite tables.';
+      state.tables = [];
+      state.selectedTable = null;
+      state.columns = [];
+      state.rows = [];
+      state.rowCount = 0;
+      state.rowOffset = 0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: widget.compact ? MainAxisSize.min : MainAxisSize.max,
       children: [
-        _DatabaseToolbar(
+        _ConnectionActionsTile(
+          status: status,
           loading: loading,
-          hasDatabase: widget.database != null,
+          hasDatabase: hasConnectedDatabase,
+          databasePath: widget.currentDatabasePath ?? widget.database?.path,
+          expanded: showConnectionActions,
+          onExpansionChanged: (value) =>
+              updatePanel(() => showConnectionActions = value),
           onRefresh: () => _refreshBrowser(this),
           onInsertSampleRow: widget.onInsertSampleRow == null
               ? null
@@ -122,9 +172,26 @@ class _SQLiteBrowserPanelState extends State<SQLiteBrowserPanel> {
                   await widget.onInsertSampleRow!();
                   await _refreshBrowser(this);
                 },
+          onOpenDatabase: widget.onOpenDatabase == null
+              ? null
+              : () async {
+                  logDebug('Open database requested.');
+                  await widget.onOpenDatabase!();
+                  if (!mounted) return;
+                  WidgetsBinding.instance.addPostFrameCallback(
+                    (_) => _refreshBrowser(this),
+                  );
+                },
+          onCloseDatabase: widget.onCloseDatabase == null
+              ? null
+              : () async {
+                  logDebug('Close database requested.');
+                  await widget.onCloseDatabase!();
+                  if (!mounted) return;
+                  _clearDisconnectedBrowserState(this);
+                },
+          onSwitchDatabaseFile: widget.onSwitchDatabaseFile,
         ),
-        const SizedBox(height: 8),
-        Text(status),
         const SizedBox(height: 8),
         if (widget.compact)
           _buildBrowser(this)

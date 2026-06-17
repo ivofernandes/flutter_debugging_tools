@@ -46,11 +46,14 @@ class ExampleController extends ChangeNotifier {
 
   final DebugHttpClient debugHttpClient = DebugHttpClient();
   Database? _database;
+  bool _databaseConnected = false;
+  String? _databasePath;
   String dbStatus = 'No database checks run yet.';
 
   bool get hasStorage => fileSystemController != null;
   String get storagePath => fileSystemController?.rootPath ?? 'Loading...';
-  Database? get database => _database;
+  Database? get database => _databaseConnected ? _database : null;
+  String? get databasePath => _databasePath;
 
   Future<void> initialize() async {
     final docs = await getApplicationDocumentsDirectory();
@@ -61,24 +64,69 @@ class ExampleController extends ChangeNotifier {
     await initializeDummyDatabase();
   }
 
-  Future<void> initializeDummyDatabase() async {
+  Future<void> initializeDummyDatabase({String? path}) async {
     final docs = await getApplicationDocumentsDirectory();
-    final dbPath = p.join(docs.path, 'debug_tool_demo.sqlite');
+    final dbPath = path ??
+        _databasePath ??
+        p.join(docs.path, 'debug_tool_demo.sqlite');
+    _databasePath = dbPath;
     _database = await openDatabase(
       dbPath,
       version: 1,
-      onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE debug_events(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            label TEXT NOT NULL,
-            created_at TEXT NOT NULL
-          )
-        ''');
-      },
+      onCreate: (db, version) async => _ensureDebugSchema(db),
+      onOpen: _ensureDebugSchema,
     );
+    _databaseConnected = true;
     dbStatus = 'Database ready at: $dbPath';
     await runDatabaseHealthCheck();
+  }
+
+  Future<void> _ensureDebugSchema(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS debug_events(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        label TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> openDummyDatabase() async {
+    if (_databaseConnected) return;
+    await _closeDetachedDatabase(_detachDatabaseHandle());
+    await initializeDummyDatabase(path: _databasePath);
+  }
+
+  Future<void> closeDummyDatabase() async {
+    final db = _detachDatabaseHandle();
+    _databaseConnected = false;
+    dbStatus = 'Database connection manually closed for debugging.';
+    notifyListeners();
+    await _closeDetachedDatabase(db);
+  }
+
+  Future<void> switchDummyDatabaseFile(String path) async {
+    final db = _detachDatabaseHandle();
+    _databaseConnected = false;
+    notifyListeners();
+    await _closeDetachedDatabase(db);
+    await initializeDummyDatabase(path: path);
+  }
+
+  Database? _detachDatabaseHandle() {
+    final db = _database;
+    _database = null;
+    return db;
+  }
+
+  Future<void> _closeDetachedDatabase(Database? db) async {
+    if (db == null) return;
+    try {
+      await db.close();
+    } catch (_) {
+      // The lifecycle controls intentionally exercise edge cases. Ignore close
+      // failures so the debug UI can still reset and reopen the connection.
+    }
   }
 
   Future<void> insertDummyRow() async {
@@ -390,7 +438,11 @@ class DatabaseTesterView extends StatelessWidget {
     return SQLiteBrowserPanel(
       database: controller.database,
       compact: compact,
+      currentDatabasePath: controller.databasePath,
       onInsertSampleRow: controller.insertDummyRow,
+      onOpenDatabase: controller.openDummyDatabase,
+      onCloseDatabase: controller.closeDummyDatabase,
+      onSwitchDatabaseFile: controller.switchDummyDatabaseFile,
     );
   }
 }

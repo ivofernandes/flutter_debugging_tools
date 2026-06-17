@@ -11,7 +11,7 @@ Widget _buildBrowser(_SQLiteBrowserPanelState state) {
           icon: Icons.table_chart_outlined,
           label: state.widget.title,
           addTooltip: 'Create table',
-          onAdd: state.loading || state.widget.database == null
+          onAdd: state.loading || !state.hasConnectedDatabase
               ? null
               : () => _showCreateTableDialog(state),
         ),
@@ -32,7 +32,7 @@ Widget _buildBrowserBody(_SQLiteBrowserPanelState state) {
         _buildTableList(state),
         const Divider(height: 1),
         if (state.selectedTable == null)
-          const _EmptyDatabaseSelection()
+          _EmptyDatabaseSelection(connected: state.hasConnectedDatabase)
         else ...[
           _buildColumnList(state),
           const Divider(height: 1),
@@ -48,7 +48,9 @@ Widget _buildBrowserBody(_SQLiteBrowserPanelState state) {
       SizedBox(width: 220, child: _buildTableList(state)),
       const VerticalDivider(width: 1),
       if (state.selectedTable == null)
-        const Expanded(child: _EmptyDatabaseSelection())
+        Expanded(
+          child: _EmptyDatabaseSelection(connected: state.hasConnectedDatabase),
+        )
       else ...[
         SizedBox(width: 280, child: _buildColumnList(state)),
         const VerticalDivider(width: 1),
@@ -67,14 +69,17 @@ Widget _buildTableList(_SQLiteBrowserPanelState state) {
 
 Widget _buildTableListContent(_SQLiteBrowserPanelState state) {
   if (state.tables.isEmpty) {
+    final message = state.hasConnectedDatabase
+        ? 'No app tables found.'
+        : 'Database is closed. Open a database to inspect tables.';
     if (state.widget.compact) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Center(child: Text('No user tables found.')),
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Center(child: Text(message)),
       );
     }
 
-    return const Expanded(child: Center(child: Text('No user tables found.')));
+    return Expanded(child: Center(child: Text(message)));
   }
 
   if (state.widget.compact) {
