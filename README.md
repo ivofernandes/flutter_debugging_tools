@@ -19,9 +19,9 @@ Out of the box, `DebuggingToolsWrapper` can expose:
 - **Navigation panel** (route jump + route metadata)
 - **Shared preferences panel** (inspect/update key-value entries)
 - **Local storage slot** (inject your own storage inspector)
-- **File-system panel** (browse and edit files under an app-provided directory)
+- **File-system panel** (auto-browse app documents by default, or browse a custom app-provided directory)
 - **Network request + logs panels** (call URLs, inspect requests, copy cURL)
-- **SQLite browser panel** (inspect `sqflite` tables, columns, and rows without writing SQL)
+- **SQLite browser panel** (auto-detect `.db`, `.sqlite`, and `.sqlite3` files, switch databases, and inspect `sqflite` tables without writing SQL)
 - **Custom panels** for app-specific workflows (state machine controls, network diagnostics, feature flags, etc.)
 
 ## Quick start
@@ -33,9 +33,9 @@ MaterialApp(
     showNavigationPanel: true,
     showSharedPreferencesPanel: true,
     showLocalStoragePanel: true,
-    // Optional: provide a sandbox directory controller to enable the
-    // packaged file browser panel in the drawer.
-    fileSystemController: fileSystemController,
+    // Files and SQLite are auto-discovered from the application documents
+    // directory by default. Pass fileSystemController only when you need a
+    // custom root directory.
     // Optional: share one debug client between URL calls and request logs.
     networkClient: debugHttpClient,
     showNetworkRequestPanel: true,
@@ -62,20 +62,22 @@ MaterialApp(
 
 Use the package in two steps:
 1. Wrap your app with `DebuggingToolsWrapper`.
-2. Pass only the panels you need.
+2. Pass only the non-obvious integrations, such as routes or a network client.
 
-You can start with navigation + shared preferences only, then progressively add:
-- the packaged file-system panel,
-- the packaged network request/log panels,
-- a state machine panel.
+By default, the wrapper tries to inspect the most common local storage setup:
+- it creates a file browser rooted at `getApplicationDocumentsDirectory()`;
+- it scans that directory for files ending in `.db`, `.sqlite`, or `.sqlite3`;
+- when database-looking files exist, it shows the SQLite panel automatically;
+- the SQLite panel includes Open/Close controls and a detected-database picker.
 
-This keeps the package lightweight for simple apps while still supporting advanced debugging use cases.
-
+You only need to pass a `FileSystemDebugController` when your app stores debug
+files outside the documents directory or when you want to restrict browsing to a
+smaller sandbox.
 
 ## File-system and network panels
 
-The generic file-system panel lives in the package now. The host app only
-provides the root directory it is safe to mutate:
+The generic file-system panel is automatic for the application documents
+directory. Override the root only when needed:
 
 ```dart
 final docs = await getApplicationDocumentsDirectory();
@@ -106,31 +108,41 @@ DebuggingToolsWrapper(
 
 ## SQLite browser panel
 
-Apps that use `sqflite` can add the packaged DB Browser-style panel to the debug drawer by passing the app's open database instance:
+For the common `sqflite` setup, no SQLite configuration is required. If the
+application documents directory contains files ending in `.db`, `.sqlite`, or
+`.sqlite3`, `DebuggingToolsWrapper` opens the first one in a debug-only
+connection and shows the SQLite panel automatically:
 
 ```dart
-DebuggingToolsWrapper(
-  // ...
-  extraPanels: [
-    CustomConfigPanel.item(
-      title: 'SQLite',
-      child: SQLiteBrowserPanel(database: database),
-    ),
-  ],
-  child: child,
+MaterialApp(
+  builder: (context, child) => DebuggingToolsWrapper(
+    child: child,
+  ),
 )
 ```
 
-The panel lists tables, shows column metadata, and previews rows. A collapsible SQL console is still available for advanced debugging.
+The panel lists tables, shows column metadata, previews rows, and includes:
+- **Open database** / **Close database** lifecycle controls,
+- a **detected database picker** that shows readable file names first and the
+  parent path second,
+- a manual **Change DB file** action for paths outside the discovered list,
+- a collapsible SQL console for advanced debugging.
+
+If your app already exposes a specific `Database` object that you want the panel
+to inspect, you can still pass it directly:
+
+```dart
+SQLiteBrowserPanel(database: database)
+```
 
 ## Example app
 
 The `example/` app demonstrates an end-to-end debugging playground:
-- use the packaged Finder-like file tree for app documents storage,
+- use the automatically discovered app documents file tree,
 - long-press files and folders to create, edit, rename, or delete items,
 - toggle a runtime workflow state machine,
 - use the packaged network request panel to call arbitrary URLs and fetch public IP,
-- inspect and change all the above from the debug drawer.
+- inspect automatically detected SQLite databases from the debug drawer.
 
 See: `example/lib/main.dart`.
 

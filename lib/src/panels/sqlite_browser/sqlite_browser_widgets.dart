@@ -12,6 +12,7 @@ class _ConnectionActionsTile extends StatelessWidget {
     this.onInsertSampleRow,
     this.onOpenDatabase,
     this.onCloseDatabase,
+    this.availableDatabasePaths = const [],
     this.onSwitchDatabaseFile,
   });
 
@@ -25,17 +26,23 @@ class _ConnectionActionsTile extends StatelessWidget {
   final Future<void> Function()? onInsertSampleRow;
   final Future<void> Function()? onOpenDatabase;
   final Future<void> Function()? onCloseDatabase;
+  final List<String> availableDatabasePaths;
   final Future<void> Function(String databasePath)? onSwitchDatabaseFile;
 
   @override
   Widget build(BuildContext context) {
-    final hasLifecycleActions = onOpenDatabase != null ||
+    final hasLifecycleActions =
+        onOpenDatabase != null ||
         onCloseDatabase != null ||
         onSwitchDatabaseFile != null ||
         onInsertSampleRow != null;
 
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Card(
       margin: EdgeInsets.zero,
+      color: colors.surfaceContainerHigh,
       child: ExpansionTile(
         initiallyExpanded: expanded,
         onExpansionChanged: onExpansionChanged,
@@ -45,9 +52,17 @@ class _ConnectionActionsTile extends StatelessWidget {
           hasDatabase ? Icons.check_circle_outline : Icons.link_off,
           color: hasDatabase ? Colors.green : null,
         ),
-        title: SelectableText(status),
+        title: SelectableText(
+          status,
+          style: textTheme.titleSmall?.copyWith(color: colors.onSurface),
+        ),
         subtitle: hasLifecycleActions
-            ? const Text('Tap to show SQLite connection actions.')
+            ? Text(
+                'Tap to show SQLite connection actions.',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              )
             : null,
         children: [
           if (databasePath != null && databasePath!.trim().isNotEmpty)
@@ -86,8 +101,9 @@ class _ConnectionActionsTile extends StatelessWidget {
                 ),
                 if (onInsertSampleRow != null)
                   OutlinedButton.icon(
-                    onPressed:
-                        loading || !hasDatabase ? null : onInsertSampleRow,
+                    onPressed: loading || !hasDatabase
+                        ? null
+                        : onInsertSampleRow,
                     icon: const Icon(Icons.science_outlined),
                     label: const Text('Insert sample row'),
                   ),
@@ -114,6 +130,13 @@ class _ConnectionActionsTile extends StatelessWidget {
               ],
             ),
           ),
+          if (onSwitchDatabaseFile != null && availableDatabasePaths.isNotEmpty)
+            _DetectedDatabasePicker(
+              availableDatabasePaths: availableDatabasePaths,
+              currentDatabasePath: databasePath,
+              loading: loading,
+              onSwitchDatabaseFile: onSwitchDatabaseFile!,
+            ),
         ],
       ),
     );
@@ -150,6 +173,145 @@ class _ConnectionActionsTile extends StatelessWidget {
     if (selectedPath == null || selectedPath.isEmpty) return;
     await onSwitchDatabaseFile?.call(selectedPath);
   }
+}
+
+class _DetectedDatabasePicker extends StatelessWidget {
+  const _DetectedDatabasePicker({
+    required this.availableDatabasePaths,
+    required this.loading,
+    required this.onSwitchDatabaseFile,
+    this.currentDatabasePath,
+  });
+
+  final List<String> availableDatabasePaths;
+  final String? currentDatabasePath;
+  final bool loading;
+  final Future<void> Function(String databasePath) onSwitchDatabaseFile;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Detected SQLite databases',
+            style: textTheme.labelLarge?.copyWith(color: colors.onSurface),
+          ),
+          const SizedBox(height: 8),
+          for (final path in availableDatabasePaths) ...[
+            _DetectedDatabaseTile(
+              path: path,
+              selected: path == currentDatabasePath,
+              loading: loading,
+              onTap: () => onSwitchDatabaseFile(path),
+            ),
+            const SizedBox(height: 8),
+          ],
+          Text(
+            'Files ending in .db, .sqlite, or .sqlite3.',
+            style: textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetectedDatabaseTile extends StatelessWidget {
+  const _DetectedDatabaseTile({
+    required this.path,
+    required this.selected,
+    required this.loading,
+    required this.onTap,
+  });
+
+  final String path;
+  final bool selected;
+  final bool loading;
+  final Future<void> Function() onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final titleColor = selected ? colors.onPrimaryContainer : colors.onSurface;
+    final subtitleColor = selected
+        ? colors.onPrimaryContainer.withOpacity(0.82)
+        : colors.onSurfaceVariant;
+
+    return Material(
+      color: selected
+          ? colors.primaryContainer
+          : colors.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: loading || selected ? null : onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Icon(
+                selected ? Icons.check_circle : Icons.storage_outlined,
+                color: selected ? colors.primary : colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _databaseFileName(path),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: titleColor,
+                        fontWeight: selected ? FontWeight.w700 : null,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _databaseParentPath(path),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: subtitleColor),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right,
+                color: selected ? colors.primary : colors.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _databaseFileName(String path) {
+  final parts = path.split(RegExp(r'[/\\]'));
+  return parts.isEmpty ? path : parts.last;
+}
+
+String _databaseParentPath(String path) {
+  final fileName = _databaseFileName(path);
+  final parent = path.substring(0, path.length - fileName.length);
+  if (parent.isEmpty) return path;
+  return parent.endsWith('/') || parent.endsWith('\\')
+      ? parent.substring(0, parent.length - 1)
+      : parent;
 }
 
 class _PaneHeader extends StatelessWidget {
@@ -206,10 +368,7 @@ class _EmptyDatabaseSelection extends StatelessWidget {
         ? 'Select a table to inspect its columns and edit rows.'
         : 'Open a database to inspect its columns and rows.';
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(message),
-      ),
+      child: Padding(padding: const EdgeInsets.all(16), child: Text(message)),
     );
   }
 }
@@ -225,9 +384,7 @@ class _DbOutput extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(10),
       color: Colors.black12,
-      child: SingleChildScrollView(
-        child: SelectableText(output),
-      ),
+      child: SingleChildScrollView(child: SelectableText(output)),
     );
   }
 }

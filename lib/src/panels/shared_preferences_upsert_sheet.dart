@@ -77,7 +77,9 @@ Future<PreferenceDraft?> showSharedPreferencesUpsertSheet({
                 const SizedBox(height: 10),
                 TextField(
                   controller: valueController,
-                  maxLines: selectedType == PreferenceValueType.stringList ? 2 : 1,
+                  maxLines: selectedType == PreferenceValueType.stringList
+                      ? 2
+                      : 1,
                   decoration: InputDecoration(
                     labelText: selectedType == PreferenceValueType.stringList
                         ? 'Value (comma-separated)'

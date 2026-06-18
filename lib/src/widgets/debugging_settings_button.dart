@@ -20,7 +20,8 @@ class DebuggingSettingsButton extends StatefulWidget {
   final bool openEndDrawer;
 
   @override
-  State<DebuggingSettingsButton> createState() => _DebuggingSettingsButtonState();
+  State<DebuggingSettingsButton> createState() =>
+      _DebuggingSettingsButtonState();
 }
 
 class _DebuggingSettingsButtonState extends State<DebuggingSettingsButton> {
@@ -58,11 +59,7 @@ class _DebuggingSettingsButtonState extends State<DebuggingSettingsButton> {
           color: Colors.black54,
           child: const Padding(
             padding: EdgeInsets.all(8),
-            child: Icon(
-              Icons.bug_report,
-              color: Colors.white,
-              size: 20,
-            ),
+            child: Icon(Icons.bug_report, color: Colors.white, size: 20),
           ),
         ),
       ),

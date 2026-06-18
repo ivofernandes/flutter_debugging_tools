@@ -10,9 +10,5 @@ class DebugPanelItem {
   final Widget body;
   bool expanded;
 
-  DebugPanelItem(
-    this.title,
-    this.body, {
-    this.expanded = false,
-  });
+  DebugPanelItem(this.title, this.body, {this.expanded = false});
 }

@@ -139,7 +139,9 @@ class _SharedPreferencesPanelState extends State<SharedPreferencesPanel> {
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_editingKey == null ? 'Preference added' : 'Preference updated'),
+          content: Text(
+            _editingKey == null ? 'Preference added' : 'Preference updated',
+          ),
           duration: const Duration(seconds: 1),
         ),
       );

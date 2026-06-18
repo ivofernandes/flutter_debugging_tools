@@ -105,14 +105,21 @@ Widget _buildTableListContent(_SQLiteBrowserPanelState state) {
 }
 
 Widget _buildTableTile(_SQLiteBrowserPanelState state, String table) {
+  final context = state.context;
+  final colors = Theme.of(context).colorScheme;
+  final selected = table == state.selectedTable;
+  final contentColor = selected ? colors.primary : colors.onSurface;
+
   return ListTile(
     dense: true,
-    selected: table == state.selectedTable,
+    selected: selected,
+    iconColor: contentColor,
+    textColor: contentColor,
+    selectedColor: colors.primary,
+    selectedTileColor: colors.primaryContainer.withOpacity(0.35),
     leading: const Icon(Icons.grid_on, size: 18),
     title: Text(table),
-    trailing: table == state.selectedTable
-        ? const Icon(Icons.chevron_right)
-        : null,
+    trailing: selected ? const Icon(Icons.chevron_right) : null,
     onTap: () => _browseTable(state, table),
   );
 }
@@ -149,9 +156,7 @@ Widget _buildColumnListContent(_SQLiteBrowserPanelState state) {
   if (state.widget.compact) {
     return Column(
       mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final column in state.columns) _buildColumnTile(column),
-      ],
+      children: [for (final column in state.columns) _buildColumnTile(column)],
     );
   }
 
@@ -168,19 +173,27 @@ Widget _buildColumnListContent(_SQLiteBrowserPanelState state) {
 }
 
 Widget _buildColumnTile(SQLiteColumnInfo column) {
-  return ListTile(
-    dense: true,
-    leading: Icon(
-      column.primaryKeyPosition > 0 ? Icons.key : Icons.notes,
-      size: 18,
-    ),
-    title: Text(column.name),
-    subtitle: Text(
-      [
-        if (column.type.isNotEmpty) column.type,
-        if (column.badges.isNotEmpty) column.badges,
-      ].join(' · '),
-    ),
+  return Builder(
+    builder: (context) {
+      final colors = Theme.of(context).colorScheme;
+      return ListTile(
+        dense: true,
+        iconColor: colors.onSurface,
+        textColor: colors.onSurface,
+        leading: Icon(
+          column.primaryKeyPosition > 0 ? Icons.key : Icons.notes,
+          size: 18,
+        ),
+        title: Text(column.name),
+        subtitle: Text(
+          [
+            if (column.type.isNotEmpty) column.type,
+            if (column.badges.isNotEmpty) column.badges,
+          ].join(' · '),
+          style: TextStyle(color: colors.onSurfaceVariant),
+        ),
+      );
+    },
   );
 }
 
@@ -248,9 +261,7 @@ Widget _buildDataRows(_SQLiteBrowserPanelState state) {
               for (final column in state.columns)
                 DataColumn(label: Text(column.name)),
             ],
-            rows: [
-              for (final row in state.rows) _buildDataRow(state, row),
-            ],
+            rows: [for (final row in state.rows) _buildDataRow(state, row)],
           ),
         ),
       ),
@@ -267,12 +278,12 @@ Widget _buildDataRows(_SQLiteBrowserPanelState state) {
             OutlinedButton.icon(
               onPressed: canGoBack
                   ? () => _browseTable(
-                        state,
-                        table,
-                        offset: (state.rowOffset - pageSize)
-                            .clamp(0, state.rowCount)
-                            .toInt(),
-                      )
+                      state,
+                      table,
+                      offset: (state.rowOffset - pageSize)
+                          .clamp(0, state.rowCount)
+                          .toInt(),
+                    )
                   : null,
               icon: const Icon(Icons.chevron_left),
               label: const Text('Previous'),
@@ -280,10 +291,10 @@ Widget _buildDataRows(_SQLiteBrowserPanelState state) {
             OutlinedButton.icon(
               onPressed: canGoForward
                   ? () => _browseTable(
-                        state,
-                        table,
-                        offset: state.rowOffset + pageSize,
-                      )
+                      state,
+                      table,
+                      offset: state.rowOffset + pageSize,
+                    )
                   : null,
               icon: const Icon(Icons.chevron_right),
               label: const Text('Next'),
@@ -306,10 +317,7 @@ DataRow _buildDataRow(
         DataCell(
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 220),
-            child: SelectableText(
-              _formatCell(row[column.name]),
-              maxLines: 2,
-            ),
+            child: SelectableText(_formatCell(row[column.name]), maxLines: 2),
           ),
           onTap: () => _showEditRowDialog(state, row),
         ),

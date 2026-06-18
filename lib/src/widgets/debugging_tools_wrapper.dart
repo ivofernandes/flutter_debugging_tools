@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
 
 import '../model/debug_panel_item.dart';
 import '../network/debug_http_client.dart';
@@ -8,6 +12,7 @@ import '../panels/navigation_panel.dart';
 import '../panels/network_logs_panel.dart';
 import '../panels/network_request_panel.dart';
 import '../panels/shared_preferences_panel.dart';
+import '../panels/sqlite_browser_panel.dart';
 import 'debugging_drawer.dart';
 import 'debugging_settings_button.dart';
 
@@ -58,6 +63,7 @@ class DebuggingToolsWrapper extends StatefulWidget {
     this.showNavigationPanel = true,
     this.showLocalStoragePanel = true,
     this.showFileSystemPanel = true,
+    this.showSQLiteBrowserPanel = true,
     this.showNetworkRequestPanel = false,
     this.showNetworkLogsPanel = false,
     this.extraPanels = const [],
@@ -66,6 +72,8 @@ class DebuggingToolsWrapper extends StatefulWidget {
     this.navigatorKey,
     this.localStorageBuilder,
     this.fileSystemController,
+    this.fileSystemRootDirectoryProvider,
+    this.sqliteDatabase,
     this.networkClient,
     this.drawerHeaderText,
     super.key,
@@ -76,8 +84,15 @@ class DebuggingToolsWrapper extends StatefulWidget {
   final bool showNavigationPanel;
   final bool showLocalStoragePanel;
 
-  /// Shows the generic file-system browser when [fileSystemController] is set.
+  /// Shows the generic file-system browser. When [fileSystemController] is not
+  /// provided, the wrapper automatically roots it at
+  /// `getApplicationDocumentsDirectory()`.
   final bool showFileSystemPanel;
+
+  /// Shows the SQLite browser when an explicit [sqliteDatabase] is provided or
+  /// when the auto-configured file-system root contains a `.db`, `.sqlite`, or
+  /// `.sqlite3` file.
+  final bool showSQLiteBrowserPanel;
 
   /// Shows a generic URL caller backed by [networkClient].
   final bool showNetworkRequestPanel;
@@ -100,8 +115,18 @@ class DebuggingToolsWrapper extends StatefulWidget {
   /// Optional builder forwarded to [LocalStoragePanel].
   final WidgetBuilder? localStorageBuilder;
 
-  /// Optional controller for the built-in [FileSystemPanel].
+  /// Optional controller for the built-in [FileSystemPanel]. If omitted, the
+  /// wrapper creates one from [fileSystemRootDirectoryProvider].
   final FileSystemDebugController? fileSystemController;
+
+  /// Root directory provider used by the automatic file-system and SQLite
+  /// discovery flow. Defaults to `getApplicationDocumentsDirectory`.
+  final Future<Directory> Function()? fileSystemRootDirectoryProvider;
+
+  /// Optional database for the built-in [SQLiteBrowserPanel]. If omitted, the
+  /// wrapper opens the first database-looking file found under the file-system
+  /// root and lets the panel switch between discovered database files.
+  final Database? sqliteDatabase;
 
   /// Optional client shared by [NetworkRequestPanel] and [NetworkLogsPanel].
   final DebugHttpClient? networkClient;
@@ -115,6 +140,130 @@ class DebuggingToolsWrapper extends StatefulWidget {
 
 class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  FileSystemDebugController? _autoFileSystemController;
+  Database? _autoSqliteDatabase;
+  String? _autoSqliteDatabasePath;
+
+  FileSystemDebugController? get _effectiveFileSystemController =>
+      widget.fileSystemController ?? _autoFileSystemController;
+
+  Database? get _effectiveSqliteDatabase =>
+      widget.sqliteDatabase ?? _autoSqliteDatabase;
+
+  @override
+  void initState() {
+    super.initState();
+    _configureAutomaticStoragePanels();
+  }
+
+  @override
+  void didUpdateWidget(covariant DebuggingToolsWrapper oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.fileSystemController != widget.fileSystemController ||
+        oldWidget.fileSystemRootDirectoryProvider !=
+            widget.fileSystemRootDirectoryProvider ||
+        oldWidget.sqliteDatabase != widget.sqliteDatabase ||
+        oldWidget.showFileSystemPanel != widget.showFileSystemPanel ||
+        oldWidget.showSQLiteBrowserPanel != widget.showSQLiteBrowserPanel) {
+      _configureAutomaticStoragePanels();
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoFileSystemController?.dispose();
+    _closeAutoSqliteDatabase();
+    super.dispose();
+  }
+
+  Future<void> _configureAutomaticStoragePanels() async {
+    if (!widget.showFileSystemPanel && !widget.showSQLiteBrowserPanel) return;
+
+    var controller = widget.fileSystemController;
+    if (controller == null) {
+      final rootDirectoryProvider =
+          widget.fileSystemRootDirectoryProvider ??
+          getApplicationDocumentsDirectory;
+      final root = await rootDirectoryProvider();
+      if (!mounted) return;
+      final existing = _autoFileSystemController;
+      if (existing == null || existing.rootPath != root.path) {
+        existing?.dispose();
+        controller = FileSystemDebugController(rootDirectory: root);
+        _autoFileSystemController = controller;
+      } else {
+        controller = existing;
+      }
+    }
+
+    if (controller == null) return;
+    await controller.initialize();
+    if (!mounted) return;
+    setState(() {});
+
+    if (widget.showSQLiteBrowserPanel && widget.sqliteDatabase == null) {
+      await _openFirstDiscoveredSqliteDatabase(controller);
+    }
+  }
+
+  Future<void> _openFirstDiscoveredSqliteDatabase(
+    FileSystemDebugController controller,
+  ) async {
+    final databaseFiles = controller.sqliteDatabaseFilePaths;
+    if (databaseFiles.isEmpty) {
+      await _closeAutoSqliteDatabase(forgetPath: true);
+      if (mounted) setState(() {});
+      return;
+    }
+
+    final selectedPath = controller.absolutePath(databaseFiles.first);
+    if (_autoSqliteDatabasePath == selectedPath &&
+        _autoSqliteDatabase != null) {
+      return;
+    }
+    await _switchAutoSqliteDatabase(selectedPath);
+  }
+
+  Future<void> _switchAutoSqliteDatabase(String databasePath) async {
+    await _closeAutoSqliteDatabase(forgetPath: true);
+    _autoSqliteDatabase = await openDatabase(
+      databasePath,
+      singleInstance: false,
+    );
+    _autoSqliteDatabasePath = databasePath;
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _openAutoSqliteDatabase() async {
+    final discoveredPaths = _discoveredSqliteDatabasePaths();
+    final databasePath =
+        _autoSqliteDatabasePath ??
+        (discoveredPaths.isEmpty ? null : discoveredPaths.first);
+    if (databasePath == null) return;
+    await _switchAutoSqliteDatabase(databasePath);
+  }
+
+  Future<void> _closeSelectedAutoSqliteDatabase() async {
+    await _closeAutoSqliteDatabase();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _closeAutoSqliteDatabase({bool forgetPath = false}) async {
+    final database = _autoSqliteDatabase;
+    _autoSqliteDatabase = null;
+    if (forgetPath) {
+      _autoSqliteDatabasePath = null;
+    }
+    await database?.close();
+  }
+
+  List<String> _discoveredSqliteDatabasePaths() {
+    final controller = _effectiveFileSystemController;
+    if (controller == null) return const [];
+    return controller.sqliteDatabaseFilePaths
+        .map(controller.absolutePath)
+        .toList(growable: false);
+  }
 
   List<DebugPanelItem> _buildPanels() {
     return [
@@ -138,41 +287,102 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
           'Local Storage',
           LocalStoragePanel(customBuilder: widget.localStorageBuilder),
         ),
-      if (widget.showFileSystemPanel && widget.fileSystemController != null)
+      if (widget.showFileSystemPanel && _effectiveFileSystemController != null)
         DebugPanelItem(
           'Files',
           FileSystemPanel(
-            controller: widget.fileSystemController!,
+            controller: _effectiveFileSystemController!,
             compact: true,
+          ),
+        ),
+      if (widget.showSQLiteBrowserPanel &&
+          (_effectiveSqliteDatabase != null ||
+              _discoveredSqliteDatabasePaths().isNotEmpty))
+        DebugPanelItem(
+          'SQLite',
+          SQLiteBrowserPanel(
+            database: _effectiveSqliteDatabase,
+            compact: true,
+            currentDatabasePath:
+                widget.sqliteDatabase?.path ?? _autoSqliteDatabasePath,
+            availableDatabasePaths: _discoveredSqliteDatabasePaths(),
+            onOpenDatabase: widget.sqliteDatabase == null
+                ? _openAutoSqliteDatabase
+                : null,
+            onCloseDatabase: widget.sqliteDatabase == null
+                ? _closeSelectedAutoSqliteDatabase
+                : null,
+            onSwitchDatabaseFile: widget.sqliteDatabase == null
+                ? (databasePath) => _switchAutoSqliteDatabase(databasePath)
+                : null,
           ),
         ),
       if (widget.showNetworkRequestPanel && widget.networkClient != null)
         DebugPanelItem(
           'Network Request',
-          NetworkRequestPanel(
-            client: widget.networkClient!,
-            compact: true,
-          ),
+          NetworkRequestPanel(client: widget.networkClient!, compact: true),
         ),
       if (widget.showNetworkLogsPanel && widget.networkClient != null)
         DebugPanelItem(
           'Network Logs',
-          NetworkLogsPanel(
-            client: widget.networkClient!,
-            compact: true,
-          ),
+          NetworkLogsPanel(client: widget.networkClient!, compact: true),
         ),
       ...widget.extraPanels,
     ];
+  }
+
+  ThemeData _debugToolsTheme(BuildContext context) {
+    final hostTheme = Theme.of(context);
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: hostTheme.colorScheme.primary,
+      brightness: hostTheme.brightness,
+    );
+
+    return ThemeData(
+      colorScheme: colorScheme,
+      useMaterial3: true,
+      visualDensity: hostTheme.visualDensity,
+      textTheme: hostTheme.textTheme.apply(
+        bodyColor: colorScheme.onSurface,
+        displayColor: colorScheme.onSurface,
+      ),
+      iconTheme: IconThemeData(color: colorScheme.onSurface),
+      dividerColor: colorScheme.outlineVariant,
+      drawerTheme: DrawerThemeData(
+        backgroundColor: colorScheme.surface,
+        scrimColor: Colors.black54,
+      ),
+      cardTheme: CardThemeData(
+        color: colorScheme.surfaceContainerHigh,
+        surfaceTintColor: colorScheme.surfaceTint,
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: colorScheme.onSurface,
+        textColor: colorScheme.onSurface,
+        selectedColor: colorScheme.primary,
+        selectedTileColor: colorScheme.primaryContainer.withOpacity(0.35),
+      ),
+      expansionTileTheme: ExpansionTileThemeData(
+        textColor: colorScheme.onSurface,
+        collapsedTextColor: colorScheme.onSurface,
+        iconColor: colorScheme.onSurface,
+        collapsedIconColor: colorScheme.onSurfaceVariant,
+        backgroundColor: colorScheme.surfaceContainerLow,
+        collapsedBackgroundColor: colorScheme.surfaceContainerLow,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      drawer: DebuggingDrawer(
-        panels: _buildPanels(),
-        headerText: widget.drawerHeaderText ?? '🐛 Debug Tools',
+      drawer: Theme(
+        data: _debugToolsTheme(context),
+        child: DebuggingDrawer(
+          panels: _buildPanels(),
+          headerText: widget.drawerHeaderText ?? '🐛 Debug Tools',
+        ),
       ),
       body: Stack(
         children: [

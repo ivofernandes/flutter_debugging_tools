@@ -34,7 +34,8 @@ String? validatePreferenceValue({
   if (type == PreferenceValueType.integer && int.tryParse(rawValue) == null) {
     return 'Enter a valid integer';
   }
-  if (type == PreferenceValueType.doubleNumber && double.tryParse(rawValue) == null) {
+  if (type == PreferenceValueType.doubleNumber &&
+      double.tryParse(rawValue) == null) {
     return 'Enter a valid double';
   }
   if (type == PreferenceValueType.boolean &&

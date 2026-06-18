@@ -17,10 +17,7 @@ import '../model/debug_panel_item.dart';
 /// )
 /// ```
 class CustomConfigPanel extends StatelessWidget {
-  const CustomConfigPanel({
-    required this.child,
-    super.key,
-  });
+  const CustomConfigPanel({required this.child, super.key});
 
   final Widget child;
 

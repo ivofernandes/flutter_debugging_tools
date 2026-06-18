@@ -56,9 +56,7 @@ Object? _parseSqlValue(String text, SQLiteColumnInfo column) {
 
   final type = column.type.toUpperCase();
   if (type.contains('INT')) return int.tryParse(trimmed) ?? trimmed;
-  if (type.contains('REAL') ||
-      type.contains('FLOA') ||
-      type.contains('DOUB')) {
+  if (type.contains('REAL') || type.contains('FLOA') || type.contains('DOUB')) {
     return double.tryParse(trimmed) ?? trimmed;
   }
   return text;
@@ -72,9 +70,9 @@ String _editFieldValue(Object? value) {
 
 void _showSnack(_SQLiteBrowserPanelState state, String message) {
   if (!state.mounted) return;
-  ScaffoldMessenger.of(state.context).showSnackBar(
-    SnackBar(content: Text(message)),
-  );
+  ScaffoldMessenger.of(
+    state.context,
+  ).showSnackBar(SnackBar(content: Text(message)));
 }
 
 String _quoteIdentifier(String value) {

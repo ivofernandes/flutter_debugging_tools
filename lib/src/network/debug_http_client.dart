@@ -7,7 +7,8 @@ import 'network_log_entry.dart';
 
 /// HTTP client wrapper that records requests/responses for debugging panels.
 class DebugHttpClient extends http.BaseClient with ChangeNotifier {
-  DebugHttpClient({http.Client? inner, this.maxEntries = 50}) : _inner = inner ?? http.Client();
+  DebugHttpClient({http.Client? inner, this.maxEntries = 50})
+    : _inner = inner ?? http.Client();
 
   final http.Client _inner;
   final int maxEntries;
@@ -29,7 +30,9 @@ class DebugHttpClient extends http.BaseClient with ChangeNotifier {
           method: request.method,
           url: request.url,
           statusCode: streamed.statusCode,
-          responseSnippet: body.length > 400 ? '${body.substring(0, 400)}…' : body,
+          responseSnippet: body.length > 400
+              ? '${body.substring(0, 400)}…'
+              : body,
         ),
       );
 

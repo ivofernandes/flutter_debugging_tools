@@ -95,7 +95,10 @@ Future<void> _showEditRowDialog(
 
   final primaryKeyColumn = _primaryKeyColumn(state.columns);
   if (primaryKeyColumn == null || row[primaryKeyColumn.name] == null) {
-    _showSnack(state, 'Rows without a primary key cannot be edited from the grid.');
+    _showSnack(
+      state,
+      'Rows without a primary key cannot be edited from the grid.',
+    );
     return;
   }
 

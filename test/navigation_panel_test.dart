@@ -17,9 +17,8 @@ void main() {
               child: NavigationPanel(
                 navigatorKey: navigatorKey,
                 routes: {
-                  '/next': (_) => const Scaffold(
-                    body: Center(child: Text('Next Page')),
-                  ),
+                  '/next': (_) =>
+                      const Scaffold(body: Center(child: Text('Next Page'))),
                 },
               ),
             ),

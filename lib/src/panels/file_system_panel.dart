@@ -10,9 +10,13 @@ import 'package:flutter/material.dart';
 /// documents directory from `path_provider`.
 class FileSystemDebugController extends ChangeNotifier {
   FileSystemDebugController({required Directory rootDirectory})
-      : _rootDirectory = rootDirectory;
+    : _rootDirectory = rootDirectory;
 
   Directory _rootDirectory;
+
+  /// File extensions treated as SQLite database files by auto-configuring
+  /// wrappers. Values are compared case-insensitively and may include a dot.
+  static const sqliteDatabaseExtensions = <String>{'db', 'sqlite', 'sqlite3'};
 
   /// Directory browsed by this controller.
   Directory get rootDirectory => _rootDirectory;
@@ -22,6 +26,11 @@ class FileSystemDebugController extends ChangeNotifier {
 
   /// All discovered directories as relative paths. The empty string is root.
   final Set<String> directories = {''};
+
+  /// Relative file paths that look like SQLite database files.
+  List<String> get sqliteDatabaseFilePaths =>
+      files.keys.where(isSqliteDatabasePath).toList()
+        ..sort((a, b) => basename(a).compareTo(basename(b)));
 
   /// Currently selected file relative path, if any.
   String? selectedFilePath;
@@ -108,8 +117,9 @@ class FileSystemDebugController extends ChangeNotifier {
     }
 
     final path = _joinPath(parentDirectory ?? currentDirectoryPath, safe);
-    await File('${_rootDirectory.path}${Platform.pathSeparator}$path')
-        .writeAsString(content);
+    await File(
+      '${_rootDirectory.path}${Platform.pathSeparator}$path',
+    ).writeAsString(content);
     selectedFilePath = path;
     await refreshFiles();
   }
@@ -121,8 +131,9 @@ class FileSystemDebugController extends ChangeNotifier {
     }
 
     final path = _joinPath(parentDirectory ?? currentDirectoryPath, safe);
-    await Directory('${_rootDirectory.path}${Platform.pathSeparator}$path')
-        .create(recursive: true);
+    await Directory(
+      '${_rootDirectory.path}${Platform.pathSeparator}$path',
+    ).create(recursive: true);
     currentDirectoryPath = path;
     await refreshFiles();
   }
@@ -146,8 +157,9 @@ class FileSystemDebugController extends ChangeNotifier {
       await oldFile.delete();
     }
 
-    await File('${_rootDirectory.path}${Platform.pathSeparator}$updatedPath')
-        .writeAsString(content);
+    await File(
+      '${_rootDirectory.path}${Platform.pathSeparator}$updatedPath',
+    ).writeAsString(content);
     selectedFilePath = updatedPath;
     await refreshFiles();
   }
@@ -259,6 +271,22 @@ class FileSystemDebugController extends ChangeNotifier {
       ..sort((a, b) => basename(a.key).compareTo(basename(b.key)));
   }
 
+  /// Returns whether [path] has a common SQLite database extension.
+  static bool isSqliteDatabasePath(String path) {
+    final fileName = path.split(Platform.pathSeparator).last.toLowerCase();
+    final extensionIndex = fileName.lastIndexOf('.');
+    if (extensionIndex == -1 || extensionIndex == fileName.length - 1) {
+      return false;
+    }
+
+    final extension = fileName.substring(extensionIndex + 1);
+    return sqliteDatabaseExtensions.contains(extension);
+  }
+
+  /// Converts a relative file path below [rootDirectory] to an absolute path.
+  String absolutePath(String relativePath) =>
+      '${_rootDirectory.path}${Platform.pathSeparator}$relativePath';
+
   String basename(String path) => path.split(Platform.pathSeparator).last;
 
   String parentPath(String path) {
@@ -340,7 +368,9 @@ class _FileSystemPanelState extends State<FileSystemPanel> {
         final selectedBaseName = selected == null
             ? null
             : controller.basename(selected);
-        final selectedContent = selected == null ? null : controller.files[selected];
+        final selectedContent = selected == null
+            ? null
+            : controller.files[selected];
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -493,7 +523,10 @@ class _FileSystemPanelState extends State<FileSystemPanel> {
     return children;
   }
 
-  Future<void> _showFolderActions(BuildContext context, String folderPath) async {
+  Future<void> _showFolderActions(
+    BuildContext context,
+    String folderPath,
+  ) async {
     controller.openDirectory(folderPath);
     final action = await showModalBottomSheet<_FileTreeAction>(
       context: context,
@@ -505,7 +538,9 @@ class _FileSystemPanelState extends State<FileSystemPanel> {
             ListTile(
               leading: const Icon(Icons.folder_outlined),
               title: Text(
-                folderPath.isEmpty ? widget.title : controller.basename(folderPath),
+                folderPath.isEmpty
+                    ? widget.title
+                    : controller.basename(folderPath),
               ),
               subtitle: Text(folderPath.isEmpty ? 'Root folder' : folderPath),
             ),
@@ -523,14 +558,16 @@ class _FileSystemPanelState extends State<FileSystemPanel> {
               ListTile(
                 leading: const Icon(Icons.drive_file_rename_outline),
                 title: const Text('Rename folder'),
-                onTap: () => Navigator.of(context).pop(_FileTreeAction.renameFolder),
+                onTap: () =>
+                    Navigator.of(context).pop(_FileTreeAction.renameFolder),
               ),
               ListTile(
                 leading: const Icon(Icons.delete_outline),
                 title: const Text('Delete folder'),
                 textColor: Colors.red,
                 iconColor: Colors.red,
-                onTap: () => Navigator.of(context).pop(_FileTreeAction.deleteFolder),
+                onTap: () =>
+                    Navigator.of(context).pop(_FileTreeAction.deleteFolder),
               ),
             ],
           ],
@@ -558,7 +595,10 @@ class _FileSystemPanelState extends State<FileSystemPanel> {
           label: 'Folder name',
         );
         if (folderName != null) {
-          await controller.createFolder(folderName, parentDirectory: folderPath);
+          await controller.createFolder(
+            folderName,
+            parentDirectory: folderPath,
+          );
           _expandedFolders.add(folderPath);
         }
         break;
@@ -610,7 +650,8 @@ class _FileSystemPanelState extends State<FileSystemPanel> {
               title: const Text('Delete file'),
               textColor: Colors.red,
               iconColor: Colors.red,
-              onTap: () => Navigator.of(context).pop(_FileTreeAction.deleteFile),
+              onTap: () =>
+                  Navigator.of(context).pop(_FileTreeAction.deleteFile),
             ),
           ],
         ),
@@ -684,9 +725,9 @@ class _FileSystemPanelState extends State<FileSystemPanel> {
               if (name.isEmpty) {
                 return;
               }
-              Navigator.of(context).pop(
-                _FileDraft(name: name, content: contentController.text),
-              );
+              Navigator.of(
+                context,
+              ).pop(_FileDraft(name: name, content: contentController.text));
             },
             child: const Text('Save'),
           ),
@@ -777,7 +818,9 @@ class _FolderTreeRow extends StatelessWidget {
                   : IconButton(
                       onPressed: onToggle,
                       icon: Icon(
-                        expanded ? Icons.keyboard_arrow_down : Icons.chevron_right,
+                        expanded
+                            ? Icons.keyboard_arrow_down
+                            : Icons.chevron_right,
                         size: 18,
                       ),
                       padding: EdgeInsets.zero,

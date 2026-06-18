@@ -45,6 +45,7 @@ class SQLiteBrowserPanel extends StatefulWidget {
     this.onOpenDatabase,
     this.onCloseDatabase,
     this.currentDatabasePath,
+    this.availableDatabasePaths = const [],
     this.onSwitchDatabaseFile,
     this.enableConsoleLogging = !kReleaseMode,
     super.key,
@@ -74,6 +75,9 @@ class SQLiteBrowserPanel extends StatefulWidget {
 
   /// Optional app-provided action for closing the active database connection.
   final Future<void> Function()? onCloseDatabase;
+
+  /// Database file paths the panel can switch between without typing a path.
+  final List<String> availableDatabasePaths;
 
   /// Optional app-provided action for pointing the app at a different database
   /// file, useful for stress-testing connection lifecycle edge cases.
@@ -117,7 +121,9 @@ class _SQLiteBrowserPanelState extends State<SQLiteBrowserPanel> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.database != widget.database ||
         oldWidget.rowLimit != widget.rowLimit) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _refreshBrowser(this));
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _refreshBrowser(this),
+      );
     }
   }
 
@@ -190,6 +196,7 @@ class _SQLiteBrowserPanelState extends State<SQLiteBrowserPanel> {
                   if (!mounted) return;
                   _clearDisconnectedBrowserState(this);
                 },
+          availableDatabasePaths: widget.availableDatabasePaths,
           onSwitchDatabaseFile: widget.onSwitchDatabaseFile,
         ),
         const SizedBox(height: 8),

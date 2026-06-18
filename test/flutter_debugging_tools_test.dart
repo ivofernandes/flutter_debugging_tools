@@ -44,4 +44,42 @@ void main() {
       );
     },
   );
+
+  test(
+    'FileSystemDebugController discovers SQLite-looking database files',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'debug_file_panel_db_test_',
+      );
+      final controller = FileSystemDebugController(rootDirectory: root);
+      addTearDown(() async {
+        controller.dispose();
+        if (await root.exists()) {
+          await root.delete(recursive: true);
+        }
+      });
+
+      await File(
+        '${root.path}${Platform.pathSeparator}app.db',
+      ).writeAsString('');
+      await File(
+        '${root.path}${Platform.pathSeparator}notes.txt',
+      ).writeAsString('');
+      await Directory('${root.path}${Platform.pathSeparator}nested').create();
+      await File(
+        '${root.path}${Platform.pathSeparator}nested${Platform.pathSeparator}cache.sqlite3',
+      ).writeAsString('');
+
+      await controller.initialize();
+
+      expect(controller.sqliteDatabaseFilePaths, [
+        'app.db',
+        'nested${Platform.pathSeparator}cache.sqlite3',
+      ]);
+      expect(
+        controller.absolutePath('app.db'),
+        '${root.path}${Platform.pathSeparator}app.db',
+      );
+    },
+  );
 }

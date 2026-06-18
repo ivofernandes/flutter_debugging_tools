@@ -9,8 +9,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
-  if (!kIsWeb &&
-      (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+  if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
@@ -20,6 +19,8 @@ void main() {
 enum AppMode { demo, staging, production }
 
 enum WorkflowState { idle, loading, success, failure }
+
+enum AppThemeMode { light, dark, system }
 
 extension on AppMode {
   String get label => switch (this) {
@@ -38,11 +39,24 @@ extension on WorkflowState {
   };
 }
 
+extension on AppThemeMode {
+  String get label => switch (this) {
+    AppThemeMode.light => 'Light',
+    AppThemeMode.dark => 'Dark',
+    AppThemeMode.system => 'System',
+  };
+
+  ThemeMode get themeMode => switch (this) {
+    AppThemeMode.light => ThemeMode.light,
+    AppThemeMode.dark => ThemeMode.dark,
+    AppThemeMode.system => ThemeMode.system,
+  };
+}
+
 class ExampleController extends ChangeNotifier {
   AppMode mode = AppMode.demo;
   WorkflowState workflow = WorkflowState.idle;
-
-  FileSystemDebugController? fileSystemController;
+  AppThemeMode themeMode = AppThemeMode.dark;
 
   final DebugHttpClient debugHttpClient = DebugHttpClient();
   Database? _database;
@@ -50,25 +64,29 @@ class ExampleController extends ChangeNotifier {
   String? _databasePath;
   String dbStatus = 'No database checks run yet.';
 
-  bool get hasStorage => fileSystemController != null;
-  String get storagePath => fileSystemController?.rootPath ?? 'Loading...';
   Database? get database => _databaseConnected ? _database : null;
   String? get databasePath => _databasePath;
 
   Future<void> initialize() async {
     final docs = await getApplicationDocumentsDirectory();
-    fileSystemController = FileSystemDebugController(
-      rootDirectory: Directory('${docs.path}/debug_tool_files'),
-    );
-    await fileSystemController!.initialize();
+    await _writeDemoDocumentFile(docs);
     await initializeDummyDatabase();
+  }
+
+  Future<void> _writeDemoDocumentFile(Directory docs) async {
+    final file = File(p.join(docs.path, 'debug_tool_notes.txt'));
+    if (!await file.exists()) {
+      await file.writeAsString(
+        'This file was created by the example app so the debug drawer can '
+        'discover documents storage without a file-system controller.',
+      );
+    }
   }
 
   Future<void> initializeDummyDatabase({String? path}) async {
     final docs = await getApplicationDocumentsDirectory();
-    final dbPath = path ??
-        _databasePath ??
-        p.join(docs.path, 'debug_tool_demo.sqlite');
+    final dbPath =
+        path ?? _databasePath ?? p.join(docs.path, 'debug_tool_demo.sqlite');
     _databasePath = dbPath;
     _database = await openDatabase(
       dbPath,
@@ -142,11 +160,7 @@ class ExampleController extends ChangeNotifier {
   Future<void> runDatabaseHealthCheck() async {
     final db = _database;
     if (db == null) return;
-    final rows = await db.query(
-      'debug_events',
-      orderBy: 'id DESC',
-      limit: 5,
-    );
+    final rows = await db.query('debug_events', orderBy: 'id DESC', limit: 5);
     dbStatus = rows.isEmpty
         ? 'Connected ✅ (table exists, no rows yet).'
         : 'Connected ✅ (${rows.length} recent rows). Latest: ${rows.first['label']} @ ${rows.first['created_at']}';
@@ -163,10 +177,14 @@ class ExampleController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setThemeMode(AppThemeMode value) {
+    themeMode = value;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     debugHttpClient.close();
-    fileSystemController?.dispose();
     _database?.close();
     super.dispose();
   }
@@ -182,7 +200,8 @@ class ExampleApp extends StatefulWidget {
 class _ExampleAppState extends State<ExampleApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   final ExampleController _controller = ExampleController();
-  final NavigationHistoryObserver _historyObserver = NavigationHistoryObserver();
+  final NavigationHistoryObserver _historyObserver =
+      NavigationHistoryObserver();
 
   @override
   void initState() {
@@ -218,10 +237,9 @@ class _ExampleAppState extends State<ExampleApp> {
         return MaterialApp(
           navigatorKey: _navigatorKey,
           title: 'debugging_tools example',
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: themeSeed),
-            useMaterial3: true,
-          ),
+          themeMode: _controller.themeMode.themeMode,
+          theme: _buildTheme(themeSeed, Brightness.light),
+          darkTheme: _buildTheme(themeSeed, Brightness.dark),
           routes: routes,
           navigatorObservers: [_historyObserver],
           builder: (context, child) => DebuggingToolsWrapper(
@@ -231,7 +249,6 @@ class _ExampleAppState extends State<ExampleApp> {
             navigatorKey: _navigatorKey,
             historyObserver: _historyObserver,
             routes: routes,
-            fileSystemController: _controller.fileSystemController,
             networkClient: _controller.debugHttpClient,
             showNetworkRequestPanel: true,
             showNetworkLogsPanel: true,
@@ -241,10 +258,6 @@ class _ExampleAppState extends State<ExampleApp> {
                 expanded: true,
                 child: StateMachineDebugPanel(controller: _controller),
               ),
-              CustomConfigPanel.item(
-                title: 'SQLite',
-                child: DatabaseDebugPanel(controller: _controller),
-              ),
             ],
             drawerHeaderText: '🐛 Debug tools playground',
             child: child,
@@ -253,6 +266,13 @@ class _ExampleAppState extends State<ExampleApp> {
       },
     );
   }
+}
+
+ThemeData _buildTheme(Color seed, Brightness brightness) {
+  return ThemeData(
+    colorScheme: ColorScheme.fromSeed(seedColor: seed, brightness: brightness),
+    useMaterial3: true,
+  );
 }
 
 class HomeScreen extends StatelessWidget {
@@ -269,6 +289,30 @@ class HomeScreen extends StatelessWidget {
         children: [
           Text('Current mode: ${controller.mode.label}'),
           Text('Workflow: ${controller.workflow.label}'),
+          Text('Theme: ${controller.themeMode.label}'),
+          const SizedBox(height: 12),
+          SegmentedButton<AppThemeMode>(
+            segments: const [
+              ButtonSegment(
+                value: AppThemeMode.dark,
+                icon: Icon(Icons.dark_mode_outlined),
+                label: Text('Dark'),
+              ),
+              ButtonSegment(
+                value: AppThemeMode.light,
+                icon: Icon(Icons.light_mode_outlined),
+                label: Text('Light'),
+              ),
+              ButtonSegment(
+                value: AppThemeMode.system,
+                icon: Icon(Icons.brightness_auto_outlined),
+                label: Text('System'),
+              ),
+            ],
+            selected: {controller.themeMode},
+            onSelectionChanged: (selection) =>
+                controller.setThemeMode(selection.first),
+          ),
           const SizedBox(height: 12),
           const Text(
             'Use these screens to generate real app state. Open the debug drawer to inspect and mutate the same data.',
@@ -308,11 +352,13 @@ class FilesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Files on device storage')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: controller.fileSystemController == null
-            ? const Center(child: CircularProgressIndicator())
-            : FileSystemPanel(controller: controller.fileSystemController!),
+      body: const Padding(
+        padding: EdgeInsets.all(16),
+        child: Text(
+          'Open the debug drawer to browse the application documents directory. '
+          'The DebuggingToolsWrapper discovers it automatically, so this example '
+          'does not pass a FileSystemDebugController.',
+        ),
       ),
     );
   }
@@ -409,17 +455,6 @@ class StateMachineDebugPanel extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-class DatabaseDebugPanel extends StatelessWidget {
-  const DatabaseDebugPanel({super.key, required this.controller});
-
-  final ExampleController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return DatabaseTesterView(controller: controller, compact: true);
   }
 }
 

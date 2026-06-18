@@ -18,8 +18,9 @@ class _CreateTableDialog extends StatefulWidget {
 }
 
 class _CreateTableDialogState extends State<_CreateTableDialog> {
-  final TextEditingController _tableNameController =
-      TextEditingController(text: 'debug_notes');
+  final TextEditingController _tableNameController = TextEditingController(
+    text: 'debug_notes',
+  );
   final List<_CreateColumnInput> _columns = [];
 
   @override
@@ -242,14 +243,14 @@ class _CreateColumnInput {
     bool unique = false,
     String defaultValue = '',
     String check = '',
-  })  : nameController = TextEditingController(text: name),
-        defaultController = TextEditingController(text: defaultValue),
-        checkController = TextEditingController(text: check),
-        type = type,
-        primaryKey = primaryKey,
-        autoIncrement = autoIncrement,
-        notNull = notNull,
-        unique = unique;
+  }) : nameController = TextEditingController(text: name),
+       defaultController = TextEditingController(text: defaultValue),
+       checkController = TextEditingController(text: check),
+       type = type,
+       primaryKey = primaryKey,
+       autoIncrement = autoIncrement,
+       notNull = notNull,
+       unique = unique;
 
   final TextEditingController nameController;
   final TextEditingController defaultController;

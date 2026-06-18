@@ -69,7 +69,8 @@ class _NavigationPanelState extends State<NavigationPanel> {
                 child: OutlinedButton(
                   onPressed: () {
                     final navigator =
-                        widget.navigatorKey?.currentState ?? Navigator.maybeOf(context);
+                        widget.navigatorKey?.currentState ??
+                        Navigator.maybeOf(context);
                     if (navigator == null) {
                       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                         const SnackBar(

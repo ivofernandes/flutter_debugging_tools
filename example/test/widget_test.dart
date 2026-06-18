@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:example/main.dart';
 
 void main() {
-  testWidgets('switches modes from home and settings', (WidgetTester tester) async {
+  testWidgets('switches modes from home and settings', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const ExampleApp());
 
     expect(find.text('Current Mode: Demo'), findsOneWidget);

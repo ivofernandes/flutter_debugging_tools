@@ -5,12 +5,13 @@ homepage:
 
 environment:
   sdk: ^3.11.1
-  flutter: ">=1.17.0"
+  flutter: ">=3.19.0"
 
 dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.2
+  path_provider: ^2.1.5
   shared_preferences: ^2.5.5
   sqflite: ^2.4.1
 

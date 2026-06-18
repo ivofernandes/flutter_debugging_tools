@@ -32,7 +32,9 @@ class _NetworkLogsPanelState extends State<NetworkLogsPanel> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: widget.compact ? MainAxisSize.min : MainAxisSize.max,
           children: [
-            Text('Recent request logs (${logs.length}/${widget.client.entries.length})'),
+            Text(
+              'Recent request logs (${logs.length}/${widget.client.entries.length})',
+            ),
             const SizedBox(height: 8),
             Text('Visible logs: $visibleCount'),
             Slider(
@@ -76,9 +78,13 @@ class _NetworkLogsPanelState extends State<NetworkLogsPanel> {
                                 ),
                                 TextButton.icon(
                                   onPressed: () {
-                                    Clipboard.setData(ClipboardData(text: log.curlCommand));
+                                    Clipboard.setData(
+                                      ClipboardData(text: log.curlCommand),
+                                    );
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('cURL copied')),
+                                      const SnackBar(
+                                        content: Text('cURL copied'),
+                                      ),
                                     );
                                   },
                                   icon: const Icon(Icons.copy, size: 16),

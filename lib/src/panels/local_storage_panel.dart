@@ -15,10 +15,7 @@ import 'package:flutter/material.dart';
 /// )
 /// ```
 class LocalStoragePanel extends StatelessWidget {
-  const LocalStoragePanel({
-    this.customBuilder,
-    super.key,
-  });
+  const LocalStoragePanel({this.customBuilder, super.key});
 
   /// Optional builder for a custom storage inspection widget.
   ///

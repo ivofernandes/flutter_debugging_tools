@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('DebuggingDrawer', () {
-    testWidgets('renders header text when provided', (WidgetTester tester) async {
+    testWidgets('renders header text when provided', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(

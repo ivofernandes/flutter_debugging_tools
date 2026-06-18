@@ -51,7 +51,9 @@ Future<void> _refreshBrowser(_SQLiteBrowserPanelState state) async {
   } catch (error) {
     if (!state.mounted) return;
     state.logDebug('Refresh failed: $error');
-    state.updatePanel(() => state.status = 'SQLite browser refresh failed: $error');
+    state.updatePanel(
+      () => state.status = 'SQLite browser refresh failed: $error',
+    );
   } finally {
     if (state.mounted) state.updatePanel(() => state.loading = false);
   }
@@ -114,7 +116,9 @@ Future<void> _browseTable(
     });
   } catch (error) {
     if (!state.mounted) return;
-    state.updatePanel(() => state.status = 'Could not browse $tableName: $error');
+    state.updatePanel(
+      () => state.status = 'Could not browse $tableName: $error',
+    );
   } finally {
     if (showLoading && state.mounted) {
       state.updatePanel(() => state.loading = false);
@@ -132,7 +136,7 @@ Future<void> _runQuery(_SQLiteBrowserPanelState state, String query) async {
     final keyword = trimmed.split(RegExp(r'\s+')).first.toUpperCase();
     if (keyword == 'SELECT' || keyword == 'PRAGMA' || keyword == 'WITH') {
       state.logDebug('Refreshing SQLite browser.');
-    final rows = await db.rawQuery(trimmed);
+      final rows = await db.rawQuery(trimmed);
       state.queryOutput = const JsonEncoder.withIndent('  ').convert(rows);
     } else if (keyword == 'INSERT') {
       final id = await db.rawInsert(trimmed);
