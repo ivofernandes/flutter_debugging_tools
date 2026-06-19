@@ -92,7 +92,7 @@ class _CompactFieldCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
-            value: column.type,
+            initialValue: column.type,
             isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Type',

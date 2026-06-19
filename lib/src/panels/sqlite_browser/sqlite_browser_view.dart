@@ -116,7 +116,7 @@ Widget _buildTableTile(_SQLiteBrowserPanelState state, String table) {
     iconColor: contentColor,
     textColor: contentColor,
     selectedColor: colors.primary,
-    selectedTileColor: colors.primaryContainer.withOpacity(0.35),
+    selectedTileColor: colors.primaryContainer.withValues(alpha: 0.35),
     leading: const Icon(Icons.grid_on, size: 18),
     title: Text(table),
     trailing: selected ? const Icon(Icons.chevron_right) : null,

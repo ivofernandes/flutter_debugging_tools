@@ -56,7 +56,7 @@ Future<PreferenceDraft?> showSharedPreferencesUpsertSheet({
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<PreferenceValueType>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   decoration: const InputDecoration(labelText: 'Type'),
                   items: PreferenceValueType.values
                       .map(

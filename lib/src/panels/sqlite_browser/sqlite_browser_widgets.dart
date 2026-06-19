@@ -242,7 +242,7 @@ class _DetectedDatabaseTile extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final titleColor = selected ? colors.onPrimaryContainer : colors.onSurface;
     final subtitleColor = selected
-        ? colors.onPrimaryContainer.withOpacity(0.82)
+        ? colors.onPrimaryContainer.withValues(alpha: 0.82)
         : colors.onSurfaceVariant;
 
     return Material(

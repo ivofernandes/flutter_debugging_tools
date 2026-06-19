@@ -49,7 +49,7 @@ class SharedPreferencesInlineEditor extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<PreferenceValueType>(
-              value: editorType,
+              initialValue: editorType,
               decoration: const InputDecoration(labelText: 'Type'),
               items: PreferenceValueType.values
                   .map(

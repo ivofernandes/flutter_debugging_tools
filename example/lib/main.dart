@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_debugging_tools/flutter_debugging_tools.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {

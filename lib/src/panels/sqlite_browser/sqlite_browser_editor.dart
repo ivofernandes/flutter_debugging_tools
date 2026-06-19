@@ -114,7 +114,7 @@ Future<void> _showEditRowDialog(
       helperTextFor: (column) => column.name == primaryKeyColumn.name
           ? 'Primary key used to find this row'
           : _columnHelperText(column),
-      includeValue: (_, __) => true,
+      includeValue: (_, _) => true,
     ),
   );
 

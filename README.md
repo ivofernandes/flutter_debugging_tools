@@ -2,6 +2,8 @@
 
 `flutter_debugging_tools` is a drop-in developer drawer for Flutter apps that helps teams inspect and mutate runtime state while debugging.
 
+![Flutter debugging tools](https://raw.githubusercontent.com/ivofernandes/flutter_debugging_tools/main/doc/screenshot.png?raw=true)
+
 ## Why this package exists
 
 When debugging mobile apps, engineers often need to:

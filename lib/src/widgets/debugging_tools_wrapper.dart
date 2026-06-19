@@ -196,7 +196,6 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
       }
     }
 
-    if (controller == null) return;
     await controller.initialize();
     if (!mounted) return;
     setState(() {});
@@ -360,7 +359,7 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
         iconColor: colorScheme.onSurface,
         textColor: colorScheme.onSurface,
         selectedColor: colorScheme.primary,
-        selectedTileColor: colorScheme.primaryContainer.withOpacity(0.35),
+        selectedTileColor: colorScheme.primaryContainer.withValues(alpha: 0.35),
       ),
       expansionTileTheme: ExpansionTileThemeData(
         textColor: colorScheme.onSurface,

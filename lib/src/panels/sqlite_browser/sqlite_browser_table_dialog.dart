@@ -236,21 +236,16 @@ class _CreateTableDialogState extends State<_CreateTableDialog> {
 class _CreateColumnInput {
   _CreateColumnInput({
     String name = '',
-    String type = 'TEXT',
-    bool primaryKey = false,
-    bool autoIncrement = false,
-    bool notNull = false,
-    bool unique = false,
+    this.type = 'TEXT',
+    this.primaryKey = false,
+    this.autoIncrement = false,
+    this.notNull = false,
+    this.unique = false,
     String defaultValue = '',
     String check = '',
   }) : nameController = TextEditingController(text: name),
        defaultController = TextEditingController(text: defaultValue),
-       checkController = TextEditingController(text: check),
-       type = type,
-       primaryKey = primaryKey,
-       autoIncrement = autoIncrement,
-       notNull = notNull,
-       unique = unique;
+       checkController = TextEditingController(text: check);
 
   final TextEditingController nameController;
   final TextEditingController defaultController;
