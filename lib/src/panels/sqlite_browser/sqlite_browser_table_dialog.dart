@@ -240,7 +240,6 @@ class _CreateColumnInput {
     this.primaryKey = false,
     this.autoIncrement = false,
     this.notNull = false,
-    this.unique = false,
     String defaultValue = '',
     String check = '',
   }) : nameController = TextEditingController(text: name),
@@ -254,7 +253,7 @@ class _CreateColumnInput {
   bool primaryKey;
   bool autoIncrement;
   bool notNull;
-  bool unique;
+  bool unique = false;
 
   String get name => nameController.text;
 
