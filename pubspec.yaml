@@ -1,5 +1,5 @@
 name: flutter_debugging_tools
-description: "A new Flutter package project."
+description: "A package providing tools for debugging Flutter applications, including a SQLite browser, file browser, shared preferences and performance monitoring utilities."
 version: 0.0.1
 homepage: https://turingdeal.com
 repository: https://github.com/ivofernandes/flutter_debugging_tools
