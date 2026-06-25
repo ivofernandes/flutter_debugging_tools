@@ -44,6 +44,7 @@ dependencies:
   path: ^1.9.1
 
 dev_dependencies:
+  patrol: ^4.6.1
   flutter_test:
     sdk: flutter
 
@@ -95,3 +96,6 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+patrol:
+  test_directory: integration_test
