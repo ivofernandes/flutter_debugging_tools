@@ -82,6 +82,42 @@ void main() {
     });
   });
 
+  group('DebuggingToolsWrapper', () {
+    testWidgets('renders child without debug overlay when disabled', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: DebuggingToolsWrapper(
+            enabled: false,
+            child: Text('app content'),
+          ),
+        ),
+      );
+
+      expect(find.text('app content'), findsOneWidget);
+      expect(find.byType(DebuggingSettingsButton), findsNothing);
+      expect(find.byType(Scaffold), findsNothing);
+    });
+
+    testWidgets('renders debug overlay when explicitly enabled', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: DebuggingToolsWrapper(
+            enabled: true,
+            child: Text('app content'),
+          ),
+        ),
+      );
+
+      expect(find.text('app content'), findsOneWidget);
+      expect(find.byType(DebuggingSettingsButton), findsOneWidget);
+      expect(find.byType(Scaffold), findsOneWidget);
+    });
+  });
+
   group('DebugPanelItem', () {
     test('defaults expanded to false', () {
       final item = DebugPanelItem('title', const SizedBox.shrink());

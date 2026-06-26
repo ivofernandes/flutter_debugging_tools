@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -59,6 +60,7 @@ import 'debugging_settings_button.dart';
 class DebuggingToolsWrapper extends StatefulWidget {
   const DebuggingToolsWrapper({
     required this.child,
+    this.enabled = !kReleaseMode,
     this.showSharedPreferencesPanel = true,
     this.showNavigationPanel = true,
     this.showLocalStoragePanel = true,
@@ -80,6 +82,15 @@ class DebuggingToolsWrapper extends StatefulWidget {
   });
 
   final Widget? child;
+
+  /// Whether the debugging overlay should be mounted.
+  ///
+  /// Defaults to disabled in release builds and enabled otherwise. Pass `true`
+  /// to intentionally expose the tools in release builds, such as when an
+  /// app-level feature flag or authorized dev mode allows production
+  /// diagnostics.
+  final bool enabled;
+
   final bool showSharedPreferencesPanel;
   final bool showNavigationPanel;
   final bool showLocalStoragePanel;
@@ -153,13 +164,23 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
   @override
   void initState() {
     super.initState();
-    _configureAutomaticStoragePanels();
+    if (widget.enabled) {
+      _configureAutomaticStoragePanels();
+    }
   }
 
   @override
   void didUpdateWidget(covariant DebuggingToolsWrapper oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.fileSystemController != widget.fileSystemController ||
+    if (!widget.enabled) {
+      _autoFileSystemController?.dispose();
+      _autoFileSystemController = null;
+      _closeAutoSqliteDatabase(forgetPath: true);
+      return;
+    }
+
+    if (oldWidget.enabled != widget.enabled ||
+        oldWidget.fileSystemController != widget.fileSystemController ||
         oldWidget.fileSystemRootDirectoryProvider !=
             widget.fileSystemRootDirectoryProvider ||
         oldWidget.sqliteDatabase != widget.sqliteDatabase ||
@@ -177,7 +198,10 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
   }
 
   Future<void> _configureAutomaticStoragePanels() async {
-    if (!widget.showFileSystemPanel && !widget.showSQLiteBrowserPanel) return;
+    if (!widget.enabled ||
+        (!widget.showFileSystemPanel && !widget.showSQLiteBrowserPanel)) {
+      return;
+    }
 
     var controller = widget.fileSystemController;
     if (controller == null) {
@@ -374,6 +398,10 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.enabled) {
+      return widget.child ?? const SizedBox.shrink();
+    }
+
     return Scaffold(
       key: _scaffoldKey,
       drawer: Theme(

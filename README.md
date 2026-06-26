@@ -31,6 +31,9 @@ Out of the box, `DebuggingToolsWrapper` can expose:
 ```dart
 MaterialApp(
   builder: (context, child) => DebuggingToolsWrapper(
+    // Defaults to !kReleaseMode. Set this from an authenticated app-level
+    // dev-mode flag when you intentionally need diagnostics in production.
+    enabled: !kReleaseMode || devModeEnabled,
     navigatorKey: navigatorKey,
     showNavigationPanel: true,
     showSharedPreferencesPanel: true,
@@ -57,6 +60,21 @@ MaterialApp(
     ],
     child: child,
   ),
+)
+```
+
+
+## Release builds and production dev mode
+
+`DebuggingToolsWrapper.enabled` defaults to `!kReleaseMode`, so the drawer is
+mounted in debug/profile builds and omitted from release builds by default. If
+your app has an authenticated or otherwise protected dev-mode flag, pass it to
+`enabled` to intentionally expose the tools in production:
+
+```dart
+DebuggingToolsWrapper(
+  enabled: !kReleaseMode || devModeEnabled,
+  child: child,
 )
 ```
 
