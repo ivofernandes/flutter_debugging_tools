@@ -1,6 +1,9 @@
+export 'src/logging/app_log_entry.dart';
+export 'src/logging/app_logger.dart';
 export 'src/model/debug_panel_item.dart';
 export 'src/network/debug_http_client.dart';
 export 'src/network/network_log_entry.dart';
+export 'src/panels/app_logs_panel.dart';
 export 'src/panels/custom_config_panel.dart';
 export 'src/panels/file_system_panel.dart';
 export 'src/panels/local_storage_panel.dart';

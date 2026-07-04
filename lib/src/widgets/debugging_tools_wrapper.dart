@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../logging/app_logger.dart';
 import '../model/debug_panel_item.dart';
 import '../network/debug_http_client.dart';
+import '../panels/app_logs_panel.dart';
 import '../panels/file_system_panel.dart';
 import '../panels/local_storage_panel.dart';
 import '../panels/navigation_panel.dart';
@@ -68,6 +70,7 @@ class DebuggingToolsWrapper extends StatefulWidget {
     this.showSQLiteBrowserPanel = true,
     this.showNetworkRequestPanel = false,
     this.showNetworkLogsPanel = false,
+    this.showAppLogsPanel = false,
     this.extraPanels = const [],
     this.routes = const {},
     this.historyObserver,
@@ -77,6 +80,7 @@ class DebuggingToolsWrapper extends StatefulWidget {
     this.fileSystemRootDirectoryProvider,
     this.sqliteDatabase,
     this.networkClient,
+    this.appLogger,
     this.drawerHeaderText,
     super.key,
   });
@@ -111,6 +115,9 @@ class DebuggingToolsWrapper extends StatefulWidget {
   /// Shows request logs captured by [networkClient].
   final bool showNetworkLogsPanel;
 
+  /// Shows application logs captured by [appLogger] or [AppLogger.instance].
+  final bool showAppLogsPanel;
+
   /// Additional custom panels appended after the built-in ones.
   final List<DebugPanelItem> extraPanels;
 
@@ -141,6 +148,9 @@ class DebuggingToolsWrapper extends StatefulWidget {
 
   /// Optional client shared by [NetworkRequestPanel] and [NetworkLogsPanel].
   final DebugHttpClient? networkClient;
+
+  /// Optional application logger shown by [AppLogsPanel].
+  final AppLogger? appLogger;
 
   /// Optional text shown at the top of the debug drawer.
   final String? drawerHeaderText;
@@ -349,6 +359,14 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
         DebugPanelItem(
           'Network Logs',
           NetworkLogsPanel(client: widget.networkClient!, compact: true),
+        ),
+      if (widget.showAppLogsPanel)
+        DebugPanelItem(
+          'App Logs',
+          AppLogsPanel(
+            logger: widget.appLogger ?? AppLogger.instance,
+            compact: true,
+          ),
         ),
       ...widget.extraPanels,
     ];

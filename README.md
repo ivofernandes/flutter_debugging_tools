@@ -23,6 +23,7 @@ Out of the box, `DebuggingToolsWrapper` can expose:
 - **Local storage slot** (inject your own storage inspector)
 - **File-system panel** (auto-browse app documents by default, or browse a custom app-provided directory)
 - **Network request + logs panels** (call URLs, inspect requests, copy cURL)
+- **App logs panel** (record app actions, search timestamped lines, copy visible logs)
 - **SQLite browser panel** (auto-detect `.db`, `.sqlite`, and `.sqlite3` files, switch databases, and inspect `sqflite` tables without writing SQL)
 - **Custom panels** for app-specific workflows (state machine controls, network diagnostics, feature flags, etc.)
 
@@ -45,6 +46,9 @@ MaterialApp(
     networkClient: debugHttpClient,
     showNetworkRequestPanel: true,
     showNetworkLogsPanel: true,
+    // Optional: surface timestamped app logs from your own code paths.
+    appLogger: appLogger,
+    showAppLogsPanel: true,
     routes: {
       '/': (_) => const HomeScreen(),
       '/settings': (_) => const SettingsScreen(),
@@ -124,6 +128,58 @@ DebuggingToolsWrapper(
   showNetworkLogsPanel: true,
   child: child,
 )
+```
+
+
+## App logs panel
+
+Use `AppLogger` to record app-specific actions, state transitions, and caught
+errors. Pass the same logger to `DebuggingToolsWrapper` so the debug drawer can
+show live log counts, grep-like filtering, selectable log lines, copy actions,
+and clearing controls.
+
+```dart
+// AppLogger() is a singleton, so this can be called anywhere.
+final appLogger = AppLogger();
+
+MaterialApp(
+  builder: (context, child) => DebuggingToolsWrapper(
+    appLogger: appLogger,
+    showAppLogsPanel: true,
+    child: child,
+  ),
+);
+
+void openNetworkScreen() {
+  appLogger.info(
+    'Open network screen',
+    tags: const ['app', 'navigation'],
+  );
+  navigatorKey.currentState?.pushNamed('/network');
+}
+
+Future<void> saveSettings() async {
+  try {
+    appLogger.debug('Saving settings', tags: const ['settings']);
+    await repository.saveSettings();
+    appLogger.info('Settings saved', tags: const ['settings']);
+  } catch (error, stackTrace) {
+    appLogger.error('Failed to save settings', error, stackTrace);
+  }
+}
+```
+
+You can also use the top-level `appLogger` shortcut exported by the package:
+
+```dart
+appLogger.warning('Cache is almost full');
+appLogger.trace('Prefetched home feed');
+```
+
+Log lines are formatted for copy/paste and command-line filtering, for example:
+
+```text
+[2026-07-04T12:34:56.000Z] INFO app.navigation Open network screen
 ```
 
 ## SQLite browser panel
