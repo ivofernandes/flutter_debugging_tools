@@ -58,6 +58,7 @@ class ExampleController extends ChangeNotifier {
   AppThemeMode themeMode = AppThemeMode.dark;
 
   final DebugHttpClient debugHttpClient = DebugHttpClient();
+  final AppLogger appLogger = AppLogger();
   Database? _database;
   bool _databaseConnected = false;
   String? _databasePath;
@@ -67,9 +68,21 @@ class ExampleController extends ChangeNotifier {
   String? get databasePath => _databasePath;
 
   Future<void> initialize() async {
+    appLogger.info(
+      'Starting example app initialization.',
+      tags: ['app.startup'],
+    );
     final docs = await getApplicationDocumentsDirectory();
+    appLogger.info(
+      'Application documents directory resolved: ${docs.path}',
+      tags: ['app.startup'],
+    );
     await _writeDemoDocumentFile(docs);
     await initializeDummyDatabase();
+    appLogger.info(
+      'Example app initialization completed successfully.',
+      tags: ['app.startup'],
+    );
   }
 
   Future<void> _writeDemoDocumentFile(Directory docs) async {
@@ -86,6 +99,11 @@ class ExampleController extends ChangeNotifier {
     final docs = await getApplicationDocumentsDirectory();
     final dbPath =
         path ?? _databasePath ?? p.join(docs.path, 'debug_tool_demo.sqlite');
+    final previousPath = _databasePath;
+    appLogger.info(
+      'Opening dummy database. previousPath=$previousPath targetPath=$dbPath',
+      tags: ['app.database'],
+    );
     _databasePath = dbPath;
     _database = await openDatabase(
       dbPath,
@@ -95,6 +113,10 @@ class ExampleController extends ChangeNotifier {
     );
     _databaseConnected = true;
     dbStatus = 'Database ready at: $dbPath';
+    appLogger.info(
+      'Dummy database opened successfully. path=$dbPath',
+      tags: ['app.database'],
+    );
     await runDatabaseHealthCheck();
   }
 
@@ -109,25 +131,51 @@ class ExampleController extends ChangeNotifier {
   }
 
   Future<void> openDummyDatabase() async {
-    if (_databaseConnected) return;
+    if (_databaseConnected) {
+      appLogger.info(
+        'Open dummy database skipped because it is already connected. path=$_databasePath',
+        tags: ['app.database'],
+      );
+      return;
+    }
+    appLogger.info(
+      'Manual dummy database open requested. path=$_databasePath',
+      tags: ['app.database'],
+    );
     await _closeDetachedDatabase(_detachDatabaseHandle());
     await initializeDummyDatabase(path: _databasePath);
   }
 
   Future<void> closeDummyDatabase() async {
+    appLogger.info(
+      'Manual dummy database close requested. path=$_databasePath connected=$_databaseConnected',
+      tags: ['app.database'],
+    );
     final db = _detachDatabaseHandle();
     _databaseConnected = false;
     dbStatus = 'Database connection manually closed for debugging.';
     notifyListeners();
     await _closeDetachedDatabase(db);
+    appLogger.info(
+      'Dummy database closed successfully. path=$_databasePath',
+      tags: ['app.database'],
+    );
   }
 
   Future<void> switchDummyDatabaseFile(String path) async {
+    appLogger.info(
+      'Switching dummy database file. from=$_databasePath to=$path',
+      tags: ['app.database'],
+    );
     final db = _detachDatabaseHandle();
     _databaseConnected = false;
     notifyListeners();
     await _closeDetachedDatabase(db);
     await initializeDummyDatabase(path: path);
+    appLogger.info(
+      'Dummy database file switch completed. path=$path',
+      tags: ['app.database'],
+    );
   }
 
   Database? _detachDatabaseHandle() {
@@ -148,35 +196,75 @@ class ExampleController extends ChangeNotifier {
 
   Future<void> insertDummyRow() async {
     final db = _database;
-    if (db == null) return;
+    if (db == null) {
+      appLogger.warning(
+        'Insert dummy row skipped because database is not connected. path=$_databasePath',
+        tags: ['app.database'],
+      );
+      return;
+    }
+    appLogger.info(
+      'Inserting dummy database row. path=$_databasePath',
+      tags: ['app.database'],
+    );
     await db.insert('debug_events', {
       'label': 'Dummy ping',
       'created_at': DateTime.now().toIso8601String(),
     });
     await runDatabaseHealthCheck();
+    appLogger.info(
+      'Dummy database row inserted successfully. path=$_databasePath',
+      tags: ['app.database'],
+    );
   }
 
   Future<void> runDatabaseHealthCheck() async {
     final db = _database;
-    if (db == null) return;
+    if (db == null) {
+      appLogger.warning(
+        'Database health check skipped because database is not connected. path=$_databasePath',
+        tags: ['app.database'],
+      );
+      return;
+    }
+    appLogger.info(
+      'Running database health check. path=$_databasePath',
+      tags: ['app.database'],
+    );
     final rows = await db.query('debug_events', orderBy: 'id DESC', limit: 5);
     dbStatus = rows.isEmpty
         ? 'Connected ✅ (table exists, no rows yet).'
         : 'Connected ✅ (${rows.length} recent rows). Latest: ${rows.first['label']} @ ${rows.first['created_at']}';
     notifyListeners();
+    appLogger.info(
+      'Database health check completed successfully. path=$_databasePath rows=${rows.length} status=$dbStatus',
+      tags: ['app.database'],
+    );
   }
 
   void setMode(AppMode value) {
+    appLogger.info(
+      'Changing app mode. from=${mode.label} to=${value.label}',
+      tags: ['app.workflow'],
+    );
     mode = value;
     notifyListeners();
   }
 
   void setWorkflow(WorkflowState value) {
+    appLogger.info(
+      'Changing workflow state. from=${workflow.label} to=${value.label}',
+      tags: ['app.workflow'],
+    );
     workflow = value;
     notifyListeners();
   }
 
   void setThemeMode(AppThemeMode value) {
+    appLogger.info(
+      'Changing theme mode. from=${themeMode.label} to=${value.label}',
+      tags: ['app.theme'],
+    );
     themeMode = value;
     notifyListeners();
   }
@@ -251,6 +339,8 @@ class _ExampleAppState extends State<ExampleApp> {
             networkClient: _controller.debugHttpClient,
             showNetworkRequestPanel: true,
             showNetworkLogsPanel: true,
+            appLogger: _controller.appLogger,
+            showAppLogsPanel: true,
             extraPanels: [
               CustomConfigPanel.item(
                 title: 'State Machine',
@@ -278,6 +368,19 @@ class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.controller});
 
   final ExampleController controller;
+
+  void _openRoute(BuildContext context, String routeName, String label) {
+    controller.appLogger.info(
+      'Navigation button tapped. label="$label" route=$routeName',
+      tags: ['app.navigation'],
+    );
+    Navigator.of(context).pushNamed(routeName).then((_) {
+      controller.appLogger.info(
+        'Navigation route returned. label="$label" route=$routeName',
+        tags: ['app.navigation'],
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -318,22 +421,38 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pushNamed('/files'),
+            onPressed: () => _openRoute(
+              context,
+              '/files',
+              'Open file screen',
+            ),
             child: const Text('Open file screen'),
           ),
           const SizedBox(height: 8),
           FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pushNamed('/state'),
+            onPressed: () => _openRoute(
+              context,
+              '/state',
+              'Open state machine screen',
+            ),
             child: const Text('Open state machine screen'),
           ),
           const SizedBox(height: 8),
           FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pushNamed('/network'),
+            onPressed: () => _openRoute(
+              context,
+              '/network',
+              'Open network screen',
+            ),
             child: const Text('Open network screen'),
           ),
           const SizedBox(height: 8),
           FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pushNamed('/database'),
+            onPressed: () => _openRoute(
+              context,
+              '/database',
+              'Open SQLite screen',
+            ),
             child: const Text('Open SQLite screen'),
           ),
         ],
