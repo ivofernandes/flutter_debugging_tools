@@ -7,6 +7,12 @@ enum AppLogLevel {
   error;
 
   String get label => name.toUpperCase();
+
+  /// Numeric severity used for minimum-level filtering.
+  int get severity => index;
+
+  /// Whether this level should be shown for [minimumLevel].
+  bool isAtLeast(AppLogLevel minimumLevel) => severity >= minimumLevel.severity;
 }
 
 /// A single application log record displayed by the app logs panel.

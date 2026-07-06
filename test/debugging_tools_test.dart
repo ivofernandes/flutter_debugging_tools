@@ -153,4 +153,38 @@ void main() {
       expect(item.expanded, isTrue);
     });
   });
+  group('AppLogsPanel', () {
+    testWidgets('filters visible logs by selected minimum level', (
+      WidgetTester tester,
+    ) async {
+      final logger = AppLogger.detached();
+      logger.debug('debug detail');
+      logger.info('info detail');
+      logger.warning('warning detail');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AppLogsPanel(
+              logger: logger,
+              initialMinimumLevel: AppLogLevel.info,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('App logs (2/3)'), findsOneWidget);
+      expect(find.textContaining('debug detail'), findsNothing);
+      expect(find.textContaining('info detail'), findsOneWidget);
+      expect(find.textContaining('warning detail'), findsOneWidget);
+
+      await tester.tap(find.text('WARNING'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('App logs (1/3)'), findsOneWidget);
+      expect(find.textContaining('info detail'), findsNothing);
+      expect(find.textContaining('warning detail'), findsOneWidget);
+    });
+  });
+
 }

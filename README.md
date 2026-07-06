@@ -136,7 +136,8 @@ DebuggingToolsWrapper(
 Use `AppLogger` to record app-specific actions, state transitions, and caught
 errors. Pass the same logger to `DebuggingToolsWrapper` so the debug drawer can
 show live log counts, grep-like filtering, selectable log lines, copy actions,
-and clearing controls.
+level chips for quickly switching the visible minimum severity, and clearing
+controls.
 
 ```dart
 // AppLogger() is a singleton, so this can be called anywhere.
@@ -146,6 +147,8 @@ MaterialApp(
   builder: (context, child) => DebuggingToolsWrapper(
     appLogger: appLogger,
     showAppLogsPanel: true,
+    // Start the panel at INFO+ logs; developers can switch levels in the UI.
+    appLogsInitialMinimumLevel: AppLogLevel.info,
     child: child,
   ),
 );

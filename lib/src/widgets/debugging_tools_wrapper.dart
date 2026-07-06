@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../logging/app_log_entry.dart';
 import '../logging/app_logger.dart';
 import '../model/debug_panel_item.dart';
 import '../network/debug_http_client.dart';
@@ -81,6 +82,7 @@ class DebuggingToolsWrapper extends StatefulWidget {
     this.sqliteDatabase,
     this.networkClient,
     this.appLogger,
+    this.appLogsInitialMinimumLevel = AppLogLevel.trace,
     this.drawerHeaderText,
     super.key,
   });
@@ -151,6 +153,11 @@ class DebuggingToolsWrapper extends StatefulWidget {
 
   /// Optional application logger shown by [AppLogsPanel].
   final AppLogger? appLogger;
+
+  /// Initial minimum application log level shown by [AppLogsPanel].
+  ///
+  /// The panel still lets users switch this level at runtime with filter chips.
+  final AppLogLevel appLogsInitialMinimumLevel;
 
   /// Optional text shown at the top of the debug drawer.
   final String? drawerHeaderText;
@@ -366,6 +373,7 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
           AppLogsPanel(
             logger: widget.appLogger ?? AppLogger.instance,
             compact: true,
+            initialMinimumLevel: widget.appLogsInitialMinimumLevel,
           ),
         ),
       ...widget.extraPanels,

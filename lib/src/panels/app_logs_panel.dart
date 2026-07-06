@@ -5,10 +5,19 @@ import '../logging/app_log_entry.dart';
 import '../logging/app_logger.dart';
 
 class AppLogsPanel extends StatefulWidget {
-  const AppLogsPanel({required this.logger, this.compact = false, super.key});
+  const AppLogsPanel({
+    required this.logger,
+    this.compact = false,
+    this.initialMinimumLevel = AppLogLevel.trace,
+    super.key,
+  });
 
   final AppLogger logger;
   final bool compact;
+
+  /// Initial minimum severity shown in the panel. Users can change this
+  /// interactively with the level chips without changing the search text.
+  final AppLogLevel initialMinimumLevel;
 
   @override
   State<AppLogsPanel> createState() => _AppLogsPanelState();
@@ -17,10 +26,12 @@ class AppLogsPanel extends StatefulWidget {
 class _AppLogsPanelState extends State<AppLogsPanel> {
   final TextEditingController _filterController = TextEditingController();
   String _filter = '';
+  late AppLogLevel _minimumLevel;
 
   @override
   void initState() {
     super.initState();
+    _minimumLevel = widget.initialMinimumLevel;
     _filterController.addListener(() {
       setState(() => _filter = _filterController.text.trim().toLowerCase());
     });
@@ -61,6 +72,20 @@ class _AppLogsPanelState extends State<AppLogsPanel> {
                       ),
                 border: const OutlineInputBorder(),
               ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final level in AppLogLevel.values)
+                  FilterChip(
+                    label: Text(level.label),
+                    selected: _minimumLevel == level,
+                    onSelected: (_) => setState(() => _minimumLevel = level),
+                    tooltip: 'Show ${level.label} and higher logs',
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -116,9 +141,12 @@ class _AppLogsPanelState extends State<AppLogsPanel> {
   }
 
   List<AppLogEntry> _visibleLogs() {
-    if (_filter.isEmpty) return widget.logger.entries.toList();
     return widget.logger.entries
-        .where((entry) => entry.copyText.toLowerCase().contains(_filter))
+        .where((entry) => entry.level.isAtLeast(_minimumLevel))
+        .where((entry) {
+          if (_filter.isEmpty) return true;
+          return entry.copyText.toLowerCase().contains(_filter);
+        })
         .toList(growable: false);
   }
 
