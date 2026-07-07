@@ -80,6 +80,123 @@ void main() {
 
       expect(find.text('panel body content'), findsOneWidget);
     });
+
+    testWidgets('shows resize handle by default', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            drawer: DebuggingDrawer(panels: []),
+            body: SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      final scaffoldState = tester.state<ScaffoldState>(find.byType(Scaffold));
+      scaffoldState.openDrawer();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('debugging_drawer_resize_handle')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('debugging_drawer_close_button')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('resizes when the resize handle is dragged', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            drawer: DebuggingDrawer(
+              panels: [],
+              width: 320,
+              resizable: true,
+            ),
+            body: SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      final scaffoldState = tester.state<ScaffoldState>(find.byType(Scaffold));
+      scaffoldState.openDrawer();
+      await tester.pumpAndSettle();
+
+      await tester.drag(
+        find.byKey(const Key('debugging_drawer_resize_handle')),
+        const Offset(80, 0),
+      );
+      await tester.pumpAndSettle();
+
+      final drawer = tester.widget<Drawer>(find.byType(Drawer));
+      expect(drawer.width, 400);
+    });
+
+    testWidgets('keeps resized width after closing and reopening', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            drawer: DebuggingDrawer(
+              panels: [],
+              width: 320,
+              resizable: true,
+            ),
+            body: SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      final scaffoldState = tester.state<ScaffoldState>(find.byType(Scaffold));
+      scaffoldState.openDrawer();
+      await tester.pumpAndSettle();
+
+      await tester.drag(
+        find.byKey(const Key('debugging_drawer_resize_handle')),
+        const Offset(80, 0),
+      );
+      await tester.pumpAndSettle();
+      scaffoldState.closeDrawer();
+      await tester.pumpAndSettle();
+
+      scaffoldState.openDrawer();
+      await tester.pumpAndSettle();
+
+      final drawer = tester.widget<Drawer>(find.byType(Drawer));
+      expect(drawer.width, 400);
+    });
+
+    testWidgets('uses fractional width when configured', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            drawer: DebuggingDrawer(
+              panels: [],
+              widthFactor: 1,
+            ),
+            body: SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      final scaffoldState = tester.state<ScaffoldState>(find.byType(Scaffold));
+      scaffoldState.openDrawer();
+      await tester.pumpAndSettle();
+
+      final drawer = tester.widget<Drawer>(find.byType(Drawer));
+      expect(
+        drawer.width,
+        tester.view.physicalSize.width / tester.view.devicePixelRatio,
+      );
+    });
   });
 
   group('DebuggingToolsWrapper', () {

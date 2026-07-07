@@ -84,8 +84,19 @@ class DebuggingToolsWrapper extends StatefulWidget {
     this.appLogger,
     this.appLogsInitialMinimumLevel = AppLogLevel.trace,
     this.drawerHeaderText,
+    this.drawerWidth,
+    this.drawerWidthFactor,
+    this.drawerResizable = true,
+    this.drawerMinWidth = 304,
+    this.drawerMaxWidth,
     super.key,
-  });
+  }) : assert(drawerWidth == null || drawerWidth > 0),
+       assert(
+         drawerWidthFactor == null ||
+             drawerWidthFactor > 0 && drawerWidthFactor <= 1,
+       ),
+       assert(drawerMinWidth > 0),
+       assert(drawerMaxWidth == null || drawerMaxWidth >= drawerMinWidth);
 
   final Widget? child;
 
@@ -162,6 +173,31 @@ class DebuggingToolsWrapper extends StatefulWidget {
   /// Optional text shown at the top of the debug drawer.
   final String? drawerHeaderText;
 
+  /// Optional fixed debug drawer width in logical pixels.
+  ///
+  /// Leave null to use Flutter's default [Drawer] width. For a full-width
+  /// drawer, prefer [drawerWidthFactor] with a value of `1`.
+  final double? drawerWidth;
+
+  /// Optional debug drawer width as a fraction of the current screen width.
+  ///
+  /// Must be greater than `0` and less than or equal to `1`. A value of `1`
+  /// makes the drawer take the entire screen width.
+  final double? drawerWidthFactor;
+
+  /// Whether users can drag the debug drawer edge to resize it at runtime.
+  ///
+  /// Enabled by default so wide panels can be expanded while the drawer is open.
+  final bool drawerResizable;
+
+  /// Minimum width allowed when [drawerResizable] is true.
+  final double drawerMinWidth;
+
+  /// Maximum width allowed when [drawerResizable] is true.
+  ///
+  /// Defaults to the current screen width.
+  final double? drawerMaxWidth;
+
   @override
   State<DebuggingToolsWrapper> createState() => _DebuggingToolsWrapperState();
 }
@@ -171,6 +207,7 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
   FileSystemDebugController? _autoFileSystemController;
   Database? _autoSqliteDatabase;
   String? _autoSqliteDatabasePath;
+  double? _userDrawerWidth;
 
   FileSystemDebugController? get _effectiveFileSystemController =>
       widget.fileSystemController ?? _autoFileSystemController;
@@ -194,6 +231,13 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
       _autoFileSystemController = null;
       _closeAutoSqliteDatabase(forgetPath: true);
       return;
+    }
+
+    if (oldWidget.drawerWidth != widget.drawerWidth ||
+        oldWidget.drawerWidthFactor != widget.drawerWidthFactor ||
+        oldWidget.drawerMinWidth != widget.drawerMinWidth ||
+        oldWidget.drawerMaxWidth != widget.drawerMaxWidth) {
+      _userDrawerWidth = null;
     }
 
     if (oldWidget.enabled != widget.enabled ||
@@ -435,6 +479,17 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
         child: DebuggingDrawer(
           panels: _buildPanels(),
           headerText: widget.drawerHeaderText ?? '🐛 Debug Tools',
+          width: _userDrawerWidth ?? widget.drawerWidth,
+          widthFactor: _userDrawerWidth == null && widget.drawerWidth == null
+              ? widget.drawerWidthFactor
+              : null,
+          resizable: widget.drawerResizable,
+          minWidth: widget.drawerMinWidth,
+          maxWidth: widget.drawerMaxWidth,
+          onWidthChanged: (width) {
+            _userDrawerWidth = width;
+          },
+          onClose: () => _scaffoldKey.currentState?.closeDrawer(),
         ),
       ),
       body: Stack(

@@ -82,6 +82,34 @@ DebuggingToolsWrapper(
 )
 ```
 
+
+## Drawer width
+
+The debug drawer uses Flutter's default drawer width unless you configure it.
+For wide tables, logs, or storage browsers, provide a fixed width or a screen
+fraction. By default, users can also drag the drawer edge to adjust the width
+while the drawer is open; the chosen width is kept when the drawer is closed and
+opened again. Set `drawerWidthFactor` to `1` to let the tools take the entire
+screen width while still opening from the same debug button:
+
+```dart
+DebuggingToolsWrapper(
+  drawerWidthFactor: 1, // full screen width
+  child: child,
+)
+
+DebuggingToolsWrapper(
+  drawerWidth: 560, // fixed logical pixels
+  child: child,
+)
+
+DebuggingToolsWrapper(
+  drawerMinWidth: 320, // edge dragging is enabled by default
+  drawerMaxWidth: 720,
+  child: child,
+)
+```
+
 ## Integration philosophy (low configuration)
 
 Use the package in two steps:
