@@ -10,6 +10,7 @@ import '../logging/app_logger.dart';
 import '../model/debug_panel_item.dart';
 import '../network/debug_http_client.dart';
 import '../panels/app_logs_panel.dart';
+import '../panels/asset_bundle_panel.dart';
 import '../panels/file_system_panel.dart';
 import '../panels/local_storage_panel.dart';
 import '../panels/navigation_panel.dart';
@@ -68,6 +69,7 @@ class DebuggingToolsWrapper extends StatefulWidget {
     this.showNavigationPanel = true,
     this.showLocalStoragePanel = true,
     this.showFileSystemPanel = true,
+    this.showAssetBundlePanel = true,
     this.showSQLiteBrowserPanel = true,
     this.showNetworkRequestPanel = false,
     this.showNetworkLogsPanel = false,
@@ -111,6 +113,9 @@ class DebuggingToolsWrapper extends StatefulWidget {
   final bool showSharedPreferencesPanel;
   final bool showNavigationPanel;
   final bool showLocalStoragePanel;
+
+  /// Shows the app asset bundle browser backed by Flutter's AssetManifest.
+  final bool showAssetBundlePanel;
 
   /// Shows the generic file-system browser. When [fileSystemController] is not
   /// provided, the wrapper automatically roots it at
@@ -370,6 +375,11 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
         DebugPanelItem(
           'Local Storage',
           LocalStoragePanel(customBuilder: widget.localStorageBuilder),
+        ),
+      if (widget.showAssetBundlePanel)
+        DebugPanelItem(
+          'Asset Bundle',
+          const AssetBundlePanel(compact: true),
         ),
       if (widget.showFileSystemPanel && _effectiveFileSystemController != null)
         DebugPanelItem(

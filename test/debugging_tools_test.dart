@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_debugging_tools/flutter_debugging_tools.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -199,6 +202,36 @@ void main() {
     });
   });
 
+  group('AssetBundlePanel', () {
+    testWidgets('lists assets from the manifest and previews text assets', (
+      WidgetTester tester,
+    ) async {
+      final bundle = _FakeAssetBundle({
+        'AssetManifest.json': '{"assets/config.json":["assets/config.json"],'
+            '"images/logo.png":["images/logo.png"]}',
+        'assets/config.json': '{"api":"local"}',
+        'images/logo.png': String.fromCharCodes([0, 1, 2, 3]),
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: AssetBundlePanel(bundle: bundle)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('2/2 asset(s)'), findsOneWidget);
+      expect(find.text('assets/config.json'), findsOneWidget);
+      expect(find.text('images/logo.png'), findsOneWidget);
+
+      await tester.tap(find.text('assets/config.json'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Selected asset: assets/config.json'), findsOneWidget);
+      expect(find.text('{"api":"local"}'), findsOneWidget);
+    });
+  });
+
   group('DebuggingToolsWrapper', () {
     testWidgets('renders child without debug overlay when disabled', (
       WidgetTester tester,
@@ -303,5 +336,20 @@ void main() {
       expect(find.textContaining('warning detail'), findsOneWidget);
     });
   });
+}
 
+class _FakeAssetBundle extends CachingAssetBundle {
+  _FakeAssetBundle(this.assets);
+
+  final Map<String, String> assets;
+
+  @override
+  Future<ByteData> load(String key) async {
+    final value = assets[key];
+    if (value == null) {
+      throw FlutterError('Asset not found: $key');
+    }
+    final bytes = Uint8List.fromList(value.codeUnits);
+    return ByteData.sublistView(bytes);
+  }
 }

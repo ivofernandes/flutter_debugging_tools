@@ -22,6 +22,7 @@ Out of the box, `DebuggingToolsWrapper` can expose:
 - **Shared preferences panel** (inspect/update key-value entries)
 - **Local storage slot** (inject your own storage inspector)
 - **File-system panel** (auto-browse app documents by default, or browse a custom app-provided directory)
+- **Asset bundle panel** (search `AssetManifest.json`, inspect bundled asset keys, sizes, and text previews)
 - **Network request + logs panels** (call URLs, inspect requests, copy cURL)
 - **App logs panel** (record app actions, search timestamped lines, copy visible logs)
 - **SQLite browser panel** (auto-detect `.db`, `.sqlite`, and `.sqlite3` files, switch databases, and inspect `sqflite` tables without writing SQL)
@@ -39,6 +40,7 @@ MaterialApp(
     showNavigationPanel: true,
     showSharedPreferencesPanel: true,
     showLocalStoragePanel: true,
+    showAssetBundlePanel: true,
     // Files and SQLite are auto-discovered from the application documents
     // directory by default. Pass fileSystemController only when you need a
     // custom root directory.
@@ -125,6 +127,23 @@ By default, the wrapper tries to inspect the most common local storage setup:
 You only need to pass a `FileSystemDebugController` when your app stores debug
 files outside the documents directory or when you want to restrict browsing to a
 smaller sandbox.
+
+## Asset bundle panel
+
+The asset bundle panel is enabled by default and reads Flutter's
+`AssetManifest.json` from the app bundle. It lets you filter bundled asset
+keys, select an asset, view its byte size, and preview UTF-8 text assets.
+Binary assets are identified without trying to render their contents.
+
+```dart
+DebuggingToolsWrapper(
+  showAssetBundlePanel: true,
+  child: child,
+)
+```
+
+Set `showAssetBundlePanel: false` if you do not want bundled asset metadata
+visible in the debug drawer.
 
 ## File-system and network panels
 
