@@ -1,0 +1,6 @@
+{
+  "feature": "asset_bundle_panel",
+  "environment": "debug-fixture",
+  "enabled": true,
+  "sampleValues": ["alpha", "beta", "gamma"]
+}

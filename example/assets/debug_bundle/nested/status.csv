@@ -1,0 +1,3 @@
+id,label,active
+1,First bundled fixture,true
+2,Nested asset fixture,false

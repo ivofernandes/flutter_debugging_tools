@@ -57,13 +57,8 @@ class _AssetBundlePanelState extends State<AssetBundlePanel> {
   AssetBundle get _bundle => widget.bundle ?? rootBundle;
 
   Future<List<String>> _loadAssetKeys() async {
-    final manifestText = await _bundle.loadString('AssetManifest.json');
-    final decoded = jsonDecode(manifestText);
-    final keys = switch (decoded) {
-      Map<String, dynamic> map => map.keys.toList(),
-      List<dynamic> list => list.cast<String>(),
-      _ => <String>[],
-    };
+    final manifest = await AssetManifest.loadFromAssetBundle(_bundle);
+    final keys = manifest.listAssets().toList();
     keys.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
     return keys;
   }
