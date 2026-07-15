@@ -70,7 +70,12 @@ class _AssetBundlePanelState extends State<AssetBundlePanel> {
       bytes.lengthInBytes,
     );
     final text = _decodeText(uint8);
-    return _AssetPreview(byteLength: uint8.length, text: text);
+    return _AssetPreview(
+      byteLength: uint8.length,
+      bytes: uint8,
+      isImage: _isSupportedImageAsset(assetKey),
+      text: text,
+    );
   }
 
   String? _decodeText(Uint8List bytes) {
@@ -90,6 +95,17 @@ class _AssetBundlePanelState extends State<AssetBundlePanel> {
       _selectedAsset = assetKey;
       _previewFuture = _loadPreview(assetKey);
     });
+  }
+
+  bool _isSupportedImageAsset(String assetKey) {
+    final lowerKey = assetKey.toLowerCase();
+    return lowerKey.endsWith('.png') ||
+        lowerKey.endsWith('.jpg') ||
+        lowerKey.endsWith('.jpeg') ||
+        lowerKey.endsWith('.gif') ||
+        lowerKey.endsWith('.webp') ||
+        lowerKey.endsWith('.bmp') ||
+        lowerKey.endsWith('.wbmp');
   }
 
   @override
@@ -202,6 +218,12 @@ class _AssetPreviewView extends StatelessWidget {
         }
 
         final preview = snapshot.data!;
+        final previewContent = preview.isImage
+            ? _ImageAssetPreview(bytes: preview.bytes)
+            : SelectableText(
+                preview.text ?? '<binary asset preview unavailable>',
+              );
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -217,9 +239,7 @@ class _AssetPreviewView extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: SingleChildScrollView(
-                child: SelectableText(
-                  preview.text ?? '<binary asset preview unavailable>',
-                ),
+                child: previewContent,
               ),
             ),
           ],
@@ -229,9 +249,36 @@ class _AssetPreviewView extends StatelessWidget {
   }
 }
 
+class _ImageAssetPreview extends StatelessWidget {
+  const _ImageAssetPreview({required this.bytes});
+
+  final Uint8List bytes;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Image.memory(
+        bytes,
+        key: const Key('asset_bundle_image_preview'),
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Text('Unable to render image preview: $error');
+        },
+      ),
+    );
+  }
+}
+
 class _AssetPreview {
-  const _AssetPreview({required this.byteLength, required this.text});
+  const _AssetPreview({
+    required this.byteLength,
+    required this.bytes,
+    required this.isImage,
+    required this.text,
+  });
 
   final int byteLength;
+  final Uint8List bytes;
+  final bool isImage;
   final String? text;
 }

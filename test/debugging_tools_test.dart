@@ -208,9 +208,10 @@ void main() {
     ) async {
       final bundle = _FakeAssetBundle({
         'AssetManifest.json': '{"assets/config.json":["assets/config.json"],'
-            '"images/logo.png":["images/logo.png"]}',
-        'assets/config.json': '{"api":"local"}',
-        'images/logo.png': String.fromCharCodes([0, 1, 2, 3]),
+                '"images/logo.png":["images/logo.png"]}'
+            .codeUnits,
+        'assets/config.json': '{"api":"local"}'.codeUnits,
+        'images/logo.png': _transparentPngBytes,
       });
 
       await tester.pumpWidget(
@@ -229,6 +230,33 @@ void main() {
 
       expect(find.text('Selected asset: assets/config.json'), findsOneWidget);
       expect(find.text('{"api":"local"}'), findsOneWidget);
+    });
+
+    testWidgets('renders image assets as image previews', (
+      WidgetTester tester,
+    ) async {
+      final bundle = _FakeAssetBundle({
+        'AssetManifest.json': '{"images/logo.png":["images/logo.png"]}'
+            .codeUnits,
+        'images/logo.png': _transparentPngBytes,
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: AssetBundlePanel(bundle: bundle)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('images/logo.png'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Selected asset: images/logo.png'), findsOneWidget);
+      expect(
+        find.byKey(const Key('asset_bundle_image_preview')),
+        findsOneWidget,
+      );
+      expect(find.text('<binary asset preview unavailable>'), findsNothing);
     });
   });
 
@@ -341,7 +369,7 @@ void main() {
 class _FakeAssetBundle extends CachingAssetBundle {
   _FakeAssetBundle(this.assets);
 
-  final Map<String, String> assets;
+  final Map<String, List<int>> assets;
 
   @override
   Future<ByteData> load(String key) async {
@@ -349,7 +377,77 @@ class _FakeAssetBundle extends CachingAssetBundle {
     if (value == null) {
       throw FlutterError('Asset not found: $key');
     }
-    final bytes = Uint8List.fromList(value.codeUnits);
+    final bytes = Uint8List.fromList(value);
     return ByteData.sublistView(bytes);
   }
 }
+
+const List<int> _transparentPngBytes = [
+  0x89,
+  0x50,
+  0x4e,
+  0x47,
+  0x0d,
+  0x0a,
+  0x1a,
+  0x0a,
+  0x00,
+  0x00,
+  0x00,
+  0x0d,
+  0x49,
+  0x48,
+  0x44,
+  0x52,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x08,
+  0x06,
+  0x00,
+  0x00,
+  0x00,
+  0x1f,
+  0x15,
+  0xc4,
+  0x89,
+  0x00,
+  0x00,
+  0x00,
+  0x0d,
+  0x49,
+  0x44,
+  0x41,
+  0x54,
+  0x78,
+  0x9c,
+  0x63,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x05,
+  0x00,
+  0x01,
+  0x0d,
+  0x0a,
+  0x2d,
+  0xb4,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x49,
+  0x45,
+  0x4e,
+  0x44,
+  0xae,
+  0x42,
+  0x60,
+  0x82,
+];
