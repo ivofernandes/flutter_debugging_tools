@@ -41,4 +41,32 @@ void main() {
 
     expect(find.text('Next Page'), findsOneWidget);
   });
+
+  testWidgets('shows named routes as a navigation tree', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: NavigationPanel(
+            routes: {
+              '/': (_) => const SizedBox.shrink(),
+              '/settings': (_) => const SizedBox.shrink(),
+              '/settings/profile': (_) => const SizedBox.shrink(),
+              '/settings/security': (_) => const SizedBox.shrink(),
+              '/orders/detail': (_) => const SizedBox.shrink(),
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Navigation tree'), findsOneWidget);
+    expect(find.text('/'), findsNWidgets(2));
+    expect(find.text('/settings'), findsNWidgets(2));
+    expect(find.text('/settings/profile'), findsNWidgets(2));
+    expect(find.text('/settings/security'), findsNWidgets(2));
+    expect(find.text('/orders'), findsOneWidget);
+    expect(find.text('/orders/detail'), findsNWidgets(2));
+  });
 }

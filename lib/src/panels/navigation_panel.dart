@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// A panel that shows buttons to push named routes, and supports displaying
-/// the navigation history via an optional [NavigationHistoryObserver].
+/// A panel that shows the named route tree, route push buttons, and supports
+/// displaying the navigation history via an optional
+/// [NavigationHistoryObserver].
 ///
 /// Pass [routes] as a map of route name → [WidgetBuilder]. A button is
 /// rendered for each entry. The host app typically passes a subset of its
@@ -57,6 +58,13 @@ class _NavigationPanelState extends State<NavigationPanel> {
           const Text('No routes provided. Pass routes to NavigationPanel.')
         else ...[
           const Text(
+            'Navigation tree',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          _RouteTreeWidget(routes: widget.routes.keys),
+          const Divider(),
+          const Text(
             'Push route',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
@@ -97,6 +105,99 @@ class _NavigationPanelState extends State<NavigationPanel> {
         ],
       ],
     );
+  }
+}
+
+class _RouteTreeWidget extends StatelessWidget {
+  const _RouteTreeWidget({required this.routes});
+
+  final Iterable<String> routes;
+
+  @override
+  Widget build(BuildContext context) {
+    final root = _RouteTreeNode(label: '/');
+    for (final route in routes) {
+      root.addRoute(route);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: _buildRows(context, root, depth: 0),
+    );
+  }
+
+  List<Widget> _buildRows(
+    BuildContext context,
+    _RouteTreeNode node, {
+    required int depth,
+  }) {
+    final textTheme = Theme.of(context).textTheme;
+    final children = <Widget>[
+      Padding(
+        padding: EdgeInsets.only(left: depth * 16),
+        child: Row(
+          children: [
+            Icon(
+              node.children.isEmpty
+                  ? Icons.radio_button_unchecked
+                  : Icons.account_tree,
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                node.label,
+                overflow: TextOverflow.ellipsis,
+                style: node.isRoute
+                    ? textTheme.bodyMedium
+                    : textTheme.bodySmall,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ];
+
+    for (final child in node.sortedChildren) {
+      children.addAll(_buildRows(context, child, depth: depth + 1));
+    }
+    return children;
+  }
+}
+
+class _RouteTreeNode {
+  _RouteTreeNode({required this.label});
+
+  final String label;
+  final Map<String, _RouteTreeNode> children = {};
+  bool isRoute = false;
+
+  List<_RouteTreeNode> get sortedChildren {
+    final values = children.values.toList();
+    values.sort((a, b) => a.label.compareTo(b.label));
+    return values;
+  }
+
+  void addRoute(String route) {
+    if (route == '/') {
+      isRoute = true;
+      return;
+    }
+
+    final normalized = route.startsWith('/') ? route.substring(1) : route;
+    final segments = normalized
+        .split('/')
+        .where((segment) => segment.isNotEmpty);
+    var current = this;
+    var path = '';
+    for (final segment in segments) {
+      path = '$path/$segment';
+      current = current.children.putIfAbsent(
+        path,
+        () => _RouteTreeNode(label: path),
+      );
+    }
+    current.isRoute = true;
   }
 }
 
