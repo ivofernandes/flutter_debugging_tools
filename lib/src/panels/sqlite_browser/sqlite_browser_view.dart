@@ -42,21 +42,42 @@ Widget _buildBrowserBody(_SQLiteBrowserPanelState state) {
     );
   }
 
-  return Row(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      SizedBox(width: 220, child: _buildTableList(state)),
-      const VerticalDivider(width: 1),
-      if (state.selectedTable == null)
-        Expanded(
-          child: _EmptyDatabaseSelection(connected: state.hasConnectedDatabase),
-        )
-      else ...[
-        SizedBox(width: 280, child: _buildColumnList(state)),
-        const VerticalDivider(width: 1),
-        Expanded(child: _buildBrowseDataGrid(state)),
-      ],
-    ],
+  // The three-pane browser needs more room than a narrow screen can provide.
+  // Keep every pane usable by scrolling the browser horizontally instead of
+  // letting the final pane overflow its bounds.
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final minimumBrowserWidth = state.selectedTable == null ? 440.0 : 860.0;
+
+      return Scrollbar(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: constraints.maxWidth < minimumBrowserWidth
+                ? minimumBrowserWidth
+                : constraints.maxWidth,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(width: 220, child: _buildTableList(state)),
+                const VerticalDivider(width: 1),
+                if (state.selectedTable == null)
+                  Expanded(
+                    child: _EmptyDatabaseSelection(
+                      connected: state.hasConnectedDatabase,
+                    ),
+                  )
+                else ...[
+                  SizedBox(width: 280, child: _buildColumnList(state)),
+                  const VerticalDivider(width: 1),
+                  Expanded(child: _buildBrowseDataGrid(state)),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    },
   );
 }
 

@@ -231,6 +231,7 @@
         <entry key="meta">
           <value>
             <list>
+              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/meta-1.18.0/lib" />
               <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/meta-1.17.0/lib" />
             </list>
           </value>
@@ -513,6 +514,7 @@
         <entry key="test_api">
           <value>
             <list>
+              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/test_api-0.7.11/lib" />
               <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/test_api-0.7.10/lib" />
             </list>
           </value>
@@ -594,6 +596,7 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/matcher-0.12.19/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/material_color_utilities-0.13.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/meta-1.17.0/lib" />
+      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/meta-1.18.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/native_toolchain_c-0.17.6/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/objective_c-9.3.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/objective_c-9.4.1/lib" />
@@ -635,6 +638,7 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/synchronized-3.4.0+1/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/term_glyph-1.2.2/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/test_api-0.7.10/lib" />
+      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/test_api-0.7.11/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/typed_data-1.4.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/vector_math-2.2.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/vm_service-15.0.2/lib" />

@@ -69,4 +69,26 @@ void main() {
     expect(find.text('/orders'), findsOneWidget);
     expect(find.text('/orders/detail'), findsNWidgets(2));
   });
+
+  testWidgets('navigates when a route in the navigation tree is tapped', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: NavigationPanel(
+            routes: {
+              '/next': (_) =>
+                  const Scaffold(body: Center(child: Text('Next Page'))),
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.bySemanticsLabel('Navigate to /next'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Next Page'), findsOneWidget);
+  });
 }

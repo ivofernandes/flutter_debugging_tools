@@ -62,7 +62,10 @@ class _NavigationPanelState extends State<NavigationPanel> {
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
-          _RouteTreeWidget(routes: widget.routes.keys),
+          _RouteTreeWidget(
+            routes: widget.routes.keys,
+            onRouteSelected: _pushRoute,
+          ),
           const Divider(),
           const Text(
             'Push route',
@@ -75,28 +78,7 @@ class _NavigationPanelState extends State<NavigationPanel> {
               child: SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
-                  onPressed: () {
-                    final navigator =
-                        widget.navigatorKey?.currentState ??
-                        Navigator.maybeOf(context);
-                    if (navigator == null) {
-                      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'No Navigator found. Pass navigatorKey to DebuggingToolsWrapper.',
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-
-                    navigator.push<void>(
-                      MaterialPageRoute<void>(
-                        builder: entry.value,
-                        settings: RouteSettings(name: entry.key),
-                      ),
-                    );
-                  },
+                  onPressed: () => _pushRoute(entry.key),
                   child: Text(entry.key),
                 ),
               ),
@@ -106,12 +88,43 @@ class _NavigationPanelState extends State<NavigationPanel> {
       ],
     );
   }
+
+  void _pushRoute(String routeName) {
+    final builder = widget.routes[routeName];
+    if (builder == null) {
+      return;
+    }
+
+    final navigator =
+        widget.navigatorKey?.currentState ?? Navigator.maybeOf(context);
+    if (navigator == null) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No Navigator found. Pass navigatorKey to DebuggingToolsWrapper.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    navigator.push<void>(
+      MaterialPageRoute<void>(
+        builder: builder,
+        settings: RouteSettings(name: routeName),
+      ),
+    );
+  }
 }
 
 class _RouteTreeWidget extends StatelessWidget {
-  const _RouteTreeWidget({required this.routes});
+  const _RouteTreeWidget({
+    required this.routes,
+    required this.onRouteSelected,
+  });
 
   final Iterable<String> routes;
+  final ValueChanged<String> onRouteSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -145,13 +158,31 @@ class _RouteTreeWidget extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Expanded(
-              child: Text(
-                node.label,
-                overflow: TextOverflow.ellipsis,
-                style: node.isRoute
-                    ? textTheme.bodyMedium
-                    : textTheme.bodySmall,
-              ),
+              child: node.isRoute
+                  ? Semantics(
+                      button: true,
+                      link: true,
+                      label: 'Navigate to ${node.label}',
+                      child: InkWell(
+                        onTap: () => onRouteSelected(node.routeName!),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            node.label,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : Text(
+                      node.label,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall,
+                    ),
             ),
           ],
         ),
@@ -171,6 +202,7 @@ class _RouteTreeNode {
   final String label;
   final Map<String, _RouteTreeNode> children = {};
   bool isRoute = false;
+  String? routeName;
 
   List<_RouteTreeNode> get sortedChildren {
     final values = children.values.toList();
@@ -181,6 +213,7 @@ class _RouteTreeNode {
   void addRoute(String route) {
     if (route == '/') {
       isRoute = true;
+      routeName = route;
       return;
     }
 
@@ -198,6 +231,7 @@ class _RouteTreeNode {
       );
     }
     current.isRoute = true;
+    current.routeName = route;
   }
 }
 
