@@ -47,7 +47,7 @@ class _NavigationPanelState extends State<NavigationPanel> {
       children: [
         if (observer != null) ...[
           const Text(
-            'Route stack (top → bottom)',
+            'Navigation stack',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
@@ -256,6 +256,14 @@ class _RouteStackWidgetState extends State<_RouteStackWidget> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant _RouteStackWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.observer == widget.observer) return;
+    oldWidget.observer.removeListener(_rebuild);
+    widget.observer.addListener(_rebuild);
+  }
+
   void _rebuild() => setState(() {});
 
   @override
@@ -264,16 +272,42 @@ class _RouteStackWidgetState extends State<_RouteStackWidget> {
     if (history.isEmpty) {
       return const Text('(empty)');
     }
+    final stack = history.reversed.toList(growable: false);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: history.reversed
-          .map(
-            (r) => Text(
-              r.settings.name ?? '(unnamed)',
-              overflow: TextOverflow.ellipsis,
+      children: [
+        for (var index = 0; index < stack.length; index++)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              children: [
+                Icon(
+                  index == 0
+                      ? Icons.location_on
+                      : Icons.subdirectory_arrow_left,
+                  size: 16,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    stack[index].settings.name ?? '(unnamed)',
+                    overflow: TextOverflow.ellipsis,
+                    style: index == 0
+                        ? const TextStyle(fontWeight: FontWeight.bold)
+                        : null,
+                  ),
+                ),
+                if (index == 0)
+                  Text(
+                    'CURRENT',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+              ],
             ),
-          )
-          .toList(),
+          ),
+      ],
     );
   }
 }

@@ -91,4 +91,57 @@ void main() {
 
     expect(find.text('Next Page'), findsOneWidget);
   });
+
+  testWidgets('shows the live navigation stack before the route tree', (
+    WidgetTester tester,
+  ) async {
+    final observer = NavigationHistoryObserver();
+    final navigatorKey = GlobalKey<NavigatorState>();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigatorKey,
+        navigatorObservers: [observer],
+        routes: {
+          '/': (_) => Scaffold(
+            body: NavigationPanel(
+              historyObserver: observer,
+              navigatorKey: navigatorKey,
+              routes: {'/details': (_) => const Text('Details')},
+            ),
+          ),
+          '/details': (_) => const Scaffold(body: Text('Details')),
+        },
+      ),
+    );
+
+    expect(find.text('Navigation stack'), findsOneWidget);
+    expect(find.text('CURRENT'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Navigation stack')).dy,
+      lessThan(tester.getTopLeft(find.text('Navigation tree')).dy),
+    );
+
+    final detailsRoute = MaterialPageRoute<void>(
+      settings: const RouteSettings(name: '/details'),
+      builder: (_) => const SizedBox.shrink(),
+    );
+    observer.didPush(detailsRoute, observer.history.last);
+    await tester.pump();
+
+    expect(find.text('/details'), findsNWidgets(2));
+    expect(find.text('CURRENT'), findsOneWidget);
+
+    observer.didPop(detailsRoute, observer.history.first);
+    detailsRoute.dispose();
+    await tester.pump();
+
+    navigatorKey.currentState!.pushNamed('/details');
+    await tester.pumpAndSettle();
+    navigatorKey.currentState!.pop();
+    await tester.pumpAndSettle();
+
+    expect(observer.history, hasLength(1));
+    expect(observer.history.single.settings.name, '/');
+  });
 }

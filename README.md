@@ -18,7 +18,7 @@ This package provides a consistent debug drawer so those tools can be surfaced i
 ## What you get
 
 Out of the box, `DebuggingToolsWrapper` can expose:
-- **Navigation panel** (route jump + route metadata)
+- **Navigation panel** (live navigation stack, route tree, and route jumps)
 - **Shared preferences panel** (inspect/update key-value entries)
 - **Local storage slot** (inject your own storage inspector)
 - **File-system panel** (auto-browse app documents by default, or browse a custom app-provided directory)
@@ -32,11 +32,15 @@ Out of the box, `DebuggingToolsWrapper` can expose:
 
 ```dart
 MaterialApp(
+  navigatorKey: navigatorKey,
+  navigatorObservers: [navigationHistoryObserver],
   builder: (context, child) => DebuggingToolsWrapper(
     // Defaults to !kReleaseMode. Set this from an authenticated app-level
     // dev-mode flag when you intentionally need diagnostics in production.
     enabled: !kReleaseMode || devModeEnabled,
     navigatorKey: navigatorKey,
+    // Register this same observer above to show the current route stack.
+    historyObserver: navigationHistoryObserver,
     showNavigationPanel: true,
     showSharedPreferencesPanel: true,
     showLocalStoragePanel: true,
