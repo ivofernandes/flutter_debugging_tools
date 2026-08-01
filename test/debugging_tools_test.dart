@@ -6,6 +6,24 @@ import 'package:flutter_debugging_tools/flutter_debugging_tools.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('sensor simulation defaults stay disabled on desktop hosts', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    expect(await DeviceUtils.isEmulator, isFalse);
+    expect(
+      await DeviceUtils.heartRateSimulationEnabledByDefault,
+      isFalse,
+    );
+    expect(await DeviceUtils.cadenceSimulationEnabledByDefault, isFalse);
+    expect(await DeviceUtils.isSimulator, isFalse);
+    expect(await DeviceUtils.isPhysicalMobileDevice, isFalse);
+    expect(DeviceUtils.isWeb, isFalse);
+    expect(DeviceUtils.isMobile, isFalse);
+    expect(DeviceUtils.isDesktop, isTrue);
+    expect(DeviceUtils.platformName, 'linux');
+  });
+
   group('DebuggingDrawer', () {
     testWidgets('renders header text when provided', (
       WidgetTester tester,

@@ -132,6 +132,31 @@ You only need to pass a `FileSystemDebugController` when your app stores debug
 files outside the documents directory or when you want to restrict browsing to a
 smaller sandbox.
 
+## Simulator sensor defaults
+
+`DeviceUtils.isEmulator` detects Android emulators and iOS simulators. The
+heart-rate and cadence default getters use that detection so simulations start
+by default in simulators while physical devices continue to use real sensors:
+
+```dart
+final simulateHeartRate =
+    await DeviceUtils.heartRateSimulationEnabledByDefault;
+final simulateCadence =
+    await DeviceUtils.cadenceSimulationEnabledByDefault;
+
+if (simulateHeartRate) {
+  heartRateSimulation.start();
+}
+if (simulateCadence) {
+  cadenceSimulation.start();
+}
+```
+
+You can also use `await DeviceUtils.isEmulator` directly when both simulations
+share a single lifecycle switch. Other reusable helpers include `isWeb`,
+`isMobile`, `isDesktop`, `isPhysicalMobileDevice`, `platformName`, and the
+`isSimulator` naming alias.
+
 ## Asset bundle panel
 
 The asset bundle panel is enabled by default and reads Flutter's

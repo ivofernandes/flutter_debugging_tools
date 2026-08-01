@@ -13,6 +13,7 @@ export 'src/panels/network_request_panel.dart';
 export 'src/panels/navigation_panel.dart';
 export 'src/panels/shared_preferences_panel.dart';
 export 'src/panels/sqlite_browser_panel.dart';
+export 'src/utils/device_utils.dart';
 export 'src/widgets/debugging_drawer.dart';
 export 'src/widgets/debugging_settings_button.dart';
 export 'src/widgets/debugging_tools_wrapper.dart';
