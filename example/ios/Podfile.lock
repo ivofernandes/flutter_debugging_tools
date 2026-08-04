@@ -1,5 +1,7 @@
 PODS:
   - CocoaAsyncSocket (7.6.5)
+  - device_info_plus (0.0.1):
+    - Flutter
   - Flutter (1.0.0)
   - patrol (0.0.1):
     - CocoaAsyncSocket (~> 7.6)
@@ -13,6 +15,7 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
+  - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
   - Flutter (from `Flutter`)
   - patrol (from `.symlinks/plugins/patrol/darwin`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
@@ -23,6 +26,8 @@ SPEC REPOS:
     - CocoaAsyncSocket
 
 EXTERNAL SOURCES:
+  device_info_plus:
+    :path: ".symlinks/plugins/device_info_plus/ios"
   Flutter:
     :path: Flutter
   patrol:
@@ -34,6 +39,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   CocoaAsyncSocket: 065fd1e645c7abab64f7a6a2007a48038fdc6a99
+  device_info_plus: bf2e3232933866d73fe290f2942f2156cdd10342
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   patrol: d49fcd015892f19189a4cec572f21f3c3358e761
   shared_preferences_foundation: 5086985c1d43c5ba4d5e69a4e8083a389e2909e6

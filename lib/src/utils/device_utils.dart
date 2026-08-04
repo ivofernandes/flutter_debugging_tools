@@ -51,18 +51,6 @@ abstract final class DeviceUtils {
     return !await isEmulator;
   }
 
-  /// Whether heart-rate simulation should start without explicit opt-in.
-  ///
-  /// Simulation is enabled by default only on an emulator or simulator, so a
-  /// physical device continues to use its real sensor integration.
-  static Future<bool> get heartRateSimulationEnabledByDefault => isEmulator;
-
-  /// Whether cadence simulation should start without explicit opt-in.
-  ///
-  /// Simulation is enabled by default only on an emulator or simulator, so a
-  /// physical device continues to use its real sensor integration.
-  static Future<bool> get cadenceSimulationEnabledByDefault => isEmulator;
-
   static Future<bool> _detectEmulator() async {
     if (kIsWeb) return false;
 
