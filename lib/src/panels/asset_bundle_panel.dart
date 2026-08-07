@@ -57,8 +57,16 @@ class _AssetBundlePanelState extends State<AssetBundlePanel> {
   AssetBundle get _bundle => widget.bundle ?? rootBundle;
 
   Future<List<String>> _loadAssetKeys() async {
-    final manifest = await AssetManifest.loadFromAssetBundle(_bundle);
-    final keys = manifest.listAssets().toList();
+    List<String> keys;
+    try {
+      final manifest = await AssetManifest.loadFromAssetBundle(_bundle);
+      keys = manifest.listAssets().toList();
+    } catch (_) {
+      // AssetManifest uses the binary manifest on current Flutter versions.
+      // Keep custom and legacy bundles that only expose JSON inspectable too.
+      final manifestJson = await _bundle.loadString('AssetManifest.json');
+      keys = (jsonDecode(manifestJson) as Map<String, dynamic>).keys.toList();
+    }
     keys.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
     return keys;
   }

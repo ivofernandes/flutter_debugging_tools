@@ -77,6 +77,9 @@ class DebuggingDrawer extends StatefulWidget {
 class _DebuggingDrawerState extends State<DebuggingDrawer> {
   late final List<DebugPanelItem> _panels;
   double? _resizedWidth;
+  double? _dragStartX;
+  double? _dragStartWidth;
+  bool _restoredWidth = false;
 
   @override
   void initState() {
@@ -111,6 +114,17 @@ class _DebuggingDrawerState extends State<DebuggingDrawer> {
           ),
         ),
       );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_restoredWidth) return;
+    _restoredWidth = true;
+    _resizedWidth = PageStorage.maybeOf(context)?.readState(
+      context,
+      identifier: widget.key ?? DebuggingDrawer,
+    ) as double?;
   }
 
   @override
@@ -255,15 +269,31 @@ class _DebuggingDrawerState extends State<DebuggingDrawer> {
                 child: GestureDetector(
                   key: const Key('debugging_drawer_resize_handle'),
                   behavior: HitTestBehavior.translucent,
+                  onHorizontalDragStart: (details) {
+                    _dragStartX = details.globalPosition.dx;
+                    _dragStartWidth = width ?? widget.minWidth;
+                  },
                   onHorizontalDragUpdate: (details) {
                     setState(() {
-                      final currentWidth = width ?? widget.minWidth;
-                      final nextWidth = (currentWidth + details.delta.dx)
+                      final nextWidth = ((_dragStartWidth ??
+                                  width ??
+                                  widget.minWidth) +
+                              details.globalPosition.dx -
+                              (_dragStartX ?? details.globalPosition.dx))
                           .clamp(widget.minWidth, maxResizableWidth)
                           .toDouble();
                       _resizedWidth = nextWidth;
+                      PageStorage.maybeOf(context)?.writeState(
+                        context,
+                        nextWidth,
+                        identifier: widget.key ?? DebuggingDrawer,
+                      );
                       widget.onWidthChanged?.call(nextWidth);
                     });
+                  },
+                  onHorizontalDragEnd: (_) {
+                    _dragStartX = null;
+                    _dragStartWidth = null;
                   },
                   child: const SizedBox(width: 24),
                 ),

@@ -119,21 +119,29 @@ class _AppLogsPanelState extends State<AppLogsPanel> {
                 child: Text('No app logs match the current filter.'),
               )
             else
-              SizedBox(
-                height: widget.compact ? 320 : 520,
-                child: ListView.separated(
-                  itemCount: visibleLogs.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) => _LogCard(
-                    entry: visibleLogs[index],
-                    onCopy: () => _copyText(
+              if (widget.compact)
+                SizedBox(
+                  height: 320,
+                  child: _LogList(
+                    logs: visibleLogs,
+                    onCopy: (entry) => _copyText(
                       context,
-                      visibleLogs[index].copyText,
+                      entry.copyText,
+                      'Log copied',
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: _LogList(
+                    logs: visibleLogs,
+                    onCopy: (entry) => _copyText(
+                      context,
+                      entry.copyText,
                       'Log copied',
                     ),
                   ),
                 ),
-              ),
           ],
         );
       },
@@ -155,6 +163,25 @@ class _AppLogsPanelState extends State<AppLogsPanel> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _LogList extends StatelessWidget {
+  const _LogList({required this.logs, required this.onCopy});
+
+  final List<AppLogEntry> logs;
+  final ValueChanged<AppLogEntry> onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      itemCount: logs.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (context, index) => _LogCard(
+        entry: logs[index],
+        onCopy: () => onCopy(logs[index]),
+      ),
+    );
   }
 }
 

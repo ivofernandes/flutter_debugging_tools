@@ -162,6 +162,7 @@ class _RouteTreeWidget extends StatelessWidget {
                   ? Semantics(
                       button: true,
                       link: true,
+                      excludeSemantics: true,
                       label: 'Navigate to ${node.label}',
                       child: InkWell(
                         onTap: () => onRouteSelected(node.routeName!),
