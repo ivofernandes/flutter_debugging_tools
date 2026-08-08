@@ -1,22 +1,9 @@
 #!/usr/bin/env python3
-"""add_debugging_tools.py
+"""Install flutter_debugging_tools into an existing Flutter application.
 
-Automates adding the debugging_tools package to a Flutter project:
-
-1. Adds ``debugging_tools`` to the ``dependencies`` section of pubspec.yaml.
-2. Adds the import statement to a target Dart file.
-3. Wraps the ``builder:`` return value inside ``DebuggingToolsWrapper``
-   in a ``MaterialApp`` call.
-
-Usage
------
-    python3 scripts/dev/add_debugging_tools.py \\
-        --pubspec path/to/pubspec.yaml \\
-        --dart    lib/my_app.dart
-
-Both arguments default to files in the current working directory:
-    pubspec  → ./pubspec.yaml
-    dart     → ./lib/main.dart
+Pass a Flutter project folder as the first argument. By default the script uses
+the current folder. It searches the project's ``lib`` folder for the Dart file
+containing ``MaterialApp``; pass ``--dart`` when there is more than one.
 """
 
 import argparse
@@ -24,225 +11,230 @@ import re
 import sys
 from pathlib import Path
 
-# --------------------------------------------------------------------------
-# Constants
-# --------------------------------------------------------------------------
-PACKAGE_NAME = "debugging_tools"
-PACKAGE_DEPENDENCY = "  debugging_tools:\n    path: packages/debugging_tools\n"
-IMPORT_LINE = "import 'package:debugging_tools/debugging_tools.dart';\n"
-WRAPPER_OPEN = "DebuggingToolsWrapper(\n        child: "
-WRAPPER_CLOSE = ",\n      )"
+PACKAGE_NAME = "flutter_debugging_tools"
+PACKAGE_VERSION = "^0.0.1"
+IMPORT_LINE = (
+    "import 'package:flutter_debugging_tools/flutter_debugging_tools.dart';\n"
+)
 
 
-# --------------------------------------------------------------------------
-# pubspec.yaml helpers
-# --------------------------------------------------------------------------
-
-def add_pubspec_dependency(pubspec_path: Path) -> None:
-    """Insert the debugging_tools dependency if not already present."""
+def add_pubspec_dependency(pubspec_path: Path) -> bool:
+    """Add the hosted package dependency, returning whether the file changed."""
     text = pubspec_path.read_text(encoding="utf-8")
+    if re.search(rf"^\s{{2}}{PACKAGE_NAME}\s*:", text, re.MULTILINE):
+        print(f"✅  pubspec.yaml: '{PACKAGE_NAME}' is already listed.")
+        return False
 
-    if PACKAGE_NAME + ":" in text:
-        print(f"✅  pubspec.yaml: '{PACKAGE_NAME}' already listed – skipping.")
-        return
+    match = re.search(r"^dependencies\s*:\s*(?:#.*)?$", text, re.MULTILINE)
+    if not match:
+        raise ValueError("Could not find a 'dependencies:' section in pubspec.yaml")
 
-    # Insert right after the 'dependencies:' line.
-    updated = re.sub(
-        r"^(dependencies:\s*\n)",
-        r"\g<1>" + PACKAGE_DEPENDENCY,
-        text,
-        count=1,
-        flags=re.MULTILINE,
-    )
-
-    if updated == text:
-        print(
-            "⚠️   Could not find a 'dependencies:' section in pubspec.yaml.\n"
-            "    Please add the following manually:\n\n"
-            "    dependencies:\n"
-            + PACKAGE_DEPENDENCY
-        )
-        return
-
+    insertion = f"\n  {PACKAGE_NAME}: {PACKAGE_VERSION}"
+    updated = text[: match.end()] + insertion + text[match.end() :]
     pubspec_path.write_text(updated, encoding="utf-8")
-    print(f"✅  pubspec.yaml: added '{PACKAGE_NAME}' dependency.")
-    print("    Run 'flutter pub get' to install it.")
+    print(f"✅  pubspec.yaml: added '{PACKAGE_NAME}: {PACKAGE_VERSION}'.")
+    return True
 
-
-# --------------------------------------------------------------------------
-# Dart file helpers
-# --------------------------------------------------------------------------
 
 def add_import(dart_text: str) -> str:
-    """Add the debugging_tools import if not already present."""
+    """Add the public package import if it is not already present."""
     if IMPORT_LINE.strip() in dart_text:
-        print("✅  Dart file: import already present – skipping.")
         return dart_text
-
-    # Insert before the first existing import or at the top.
-    match = re.search(r"^import ", dart_text, re.MULTILINE)
-    if match:
-        pos = match.start()
-        dart_text = dart_text[:pos] + IMPORT_LINE + dart_text[pos:]
-    else:
-        dart_text = IMPORT_LINE + dart_text
-
-    print("✅  Dart file: added import statement.")
-    return dart_text
+    match = re.search(r"^(?:import|export|part) ", dart_text, re.MULTILINE)
+    position = match.start() if match else 0
+    return dart_text[:position] + IMPORT_LINE + dart_text[position:]
 
 
-def wrap_builder_return(dart_text: str) -> str:
-    """
-    Attempt to wrap the value returned from a ``builder:`` callback
-    inside DebuggingToolsWrapper.
+def _code_mask(text: str) -> str:
+    """Return text with comments and strings blanked, preserving positions."""
+    chars = list(text)
+    i = 0
+    state = "code"
+    quote = ""
+    while i < len(chars):
+        if state == "code" and text.startswith("//", i):
+            state = "line"
+        elif state == "code" and text.startswith("/*", i):
+            state = "block"
+            chars[i] = chars[i + 1] = " "
+            i += 2
+            continue
+        elif state == "code" and chars[i] in "'\"":
+            quote = chars[i]
+            state = "string"
+        elif state == "line" and chars[i] == "\n":
+            state = "code"
+        elif state == "block" and text.startswith("*/", i):
+            chars[i] = chars[i + 1] = " "
+            state = "code"
+            i += 2
+            continue
+        elif state == "string" and chars[i] == quote and (
+            i == 0 or chars[i - 1] != "\\"
+        ):
+            chars[i] = " "
+            state = "code"
+            i += 1
+            continue
 
-    Matches patterns like:
-        builder: (context, child) => SomeWidget(...)
-        builder: (context, child) { return SomeWidget(...); }
-
-    This is a best-effort transformation; complex multi-line builders
-    are printed as a manual-step instruction instead.
-    """
-    # Arrow function pattern:  builder: (x, y) => <expr>,
-    arrow_pattern = re.compile(
-        r"(builder\s*:\s*\([^)]*\)\s*=>\s*)"  # group 1: 'builder: (x, y) => '
-        r"(DebuggingToolsWrapper\b)",           # already wrapped?
-        re.DOTALL,
-    )
-    if arrow_pattern.search(dart_text):
-        print("✅  Dart file: MaterialApp builder already uses DebuggingToolsWrapper.")
-        return dart_text
-
-    # Simple single-expression arrow: builder: (ctx, child) => Foo(...)
-    # We only handle the common single-widget case to stay safe.
-    simple_arrow = re.compile(
-        r"(builder\s*:\s*\([^)]*\)\s*=>\s*)"
-        r"([A-Z]\w*\s*\()",   # starts with a Widget constructor, e.g.  Scaffold(
-        re.DOTALL,
-    )
-    match = simple_arrow.search(dart_text)
-    if match:
-        insert_pos = match.start(2)
-        dart_text = (
-            dart_text[:insert_pos]
-            + WRAPPER_OPEN
-            + dart_text[insert_pos:]
-        )
-        # Close the wrapper after the widget – find the balanced paren end.
-        search_from = insert_pos + len(WRAPPER_OPEN)
-        close_pos = _find_balanced_paren_end(dart_text, search_from)
-        if close_pos != -1:
-            dart_text = dart_text[:close_pos] + WRAPPER_CLOSE + dart_text[close_pos:]
-            print("✅  Dart file: wrapped MaterialApp builder in DebuggingToolsWrapper.")
-        else:
-            print(
-                "⚠️   Could not auto-close DebuggingToolsWrapper.\n"
-                "    Please complete the wrapping manually (see instructions below)."
-            )
-        return dart_text
-
-    # Could not transform automatically.
-    _print_manual_instructions()
-    return dart_text
-
-
-def _find_balanced_paren_end(text: str, start: int) -> int:
-    """
-    Starting from ``start`` (which should be just after an opening '('),
-    return the index of the matching ')'.  Returns -1 if not found.
-
-    depth tracks how many unmatched '(' have been seen so far.  When the
-    first ')' is encountered at depth == 0 it is the balancing close paren.
-    """
-    depth = 0
-    i = start
-    while i < len(text):
-        ch = text[i]
-        if ch == "(":
-            depth += 1
-        elif ch == ")":
-            if depth == 0:
-                return i + 1
-            depth -= 1
+        if state != "code":
+            chars[i] = "\n" if chars[i] == "\n" else " "
         i += 1
-    return -1
+    return "".join(chars)
 
 
-def _print_manual_instructions() -> None:
-    print(
-        "\n⚠️   Could not automatically wrap the MaterialApp builder.\n"
-        "    Please apply the following change manually:\n\n"
-        "    BEFORE:\n"
-        "        builder: (context, child) => YourWidget(\n"
-        "          ...\n"
-        "        ),\n\n"
-        "    AFTER:\n"
-        "        builder: (context, child) => DebuggingToolsWrapper(\n"
-        "          child: YourWidget(\n"
-        "            ...\n"
-        "          ),\n"
-        "        ),\n"
+def _matching_paren(mask: str, opening: int) -> int:
+    depth = 0
+    for index in range(opening, len(mask)):
+        if mask[index] == "(":
+            depth += 1
+        elif mask[index] == ")":
+            depth -= 1
+            if depth == 0:
+                return index
+    raise ValueError("MaterialApp has an unmatched opening parenthesis")
+
+
+def _top_level_builder(mask: str, start: int, end: int) -> tuple[int, int] | None:
+    """Find a top-level builder value and return its start/end offsets."""
+    depths = {"(": 0, "[": 0, "{": 0}
+    closes = {")": "(", "]": "[", "}": "{"}
+    i = start
+    while i < end:
+        character = mask[i]
+        if character in depths:
+            depths[character] += 1
+        elif character in closes:
+            depths[closes[character]] -= 1
+        elif all(value == 0 for value in depths.values()):
+            match = re.match(r"builder\s*:", mask[i:])
+            if match:
+                value_start = i + match.end()
+                while value_start < end and mask[value_start].isspace():
+                    value_start += 1
+                j = value_start
+                nested = depths.copy()
+                while j < end:
+                    char = mask[j]
+                    if char in nested:
+                        nested[char] += 1
+                    elif char in closes:
+                        nested[closes[char]] -= 1
+                    elif char == "," and all(v == 0 for v in nested.values()):
+                        return value_start, j
+                    j += 1
+                return value_start, end
+        i += 1
+    return None
+
+
+def wrap_material_app(dart_text: str) -> str:
+    """Add or compose MaterialApp.builder with DebuggingToolsWrapper."""
+    mask = _code_mask(dart_text)
+    if re.search(r"\bDebuggingToolsWrapper\s*\(", mask):
+        print("✅  Dart file: DebuggingToolsWrapper is already configured.")
+        return dart_text
+
+    material_apps = list(re.finditer(r"\bMaterialApp(?:\.router)?\s*\(", mask))
+    if not material_apps:
+        raise ValueError("Could not find a MaterialApp or MaterialApp.router call")
+    if len(material_apps) > 1:
+        raise ValueError("Found multiple MaterialApp calls; move one to another file or edit manually")
+
+    opening = mask.find("(", material_apps[0].start())
+    closing = _matching_paren(mask, opening)
+    builder = _top_level_builder(mask, opening + 1, closing)
+    line_start = dart_text.rfind("\n", 0, opening) + 1
+    base_indent = re.match(r"\s*", dart_text[line_start:opening]).group()
+    property_indent = base_indent + "  "
+
+    if builder:
+        value_start, value_end = builder
+        old_builder = dart_text[value_start:value_end].rstrip()
+        replacement = (
+            "(context, child) => DebuggingToolsWrapper(\n"
+            f"{property_indent}  child: ({old_builder})(context, child),\n"
+            f"{property_indent})"
+        )
+        updated = dart_text[:value_start] + replacement + dart_text[value_end:]
+        print("✅  Dart file: wrapped the existing MaterialApp builder.")
+        return updated
+
+    insertion = (
+        f"\n{property_indent}builder: (context, child) => DebuggingToolsWrapper(\n"
+        f"{property_indent}  child: child,\n"
+        f"{property_indent}),"
     )
+    if dart_text[opening + 1 : opening + 2] != "\n":
+        insertion += f"\n{property_indent}"
+    print("✅  Dart file: added DebuggingToolsWrapper to MaterialApp.builder.")
+    return dart_text[: opening + 1] + insertion + dart_text[opening + 1 :]
 
 
-# --------------------------------------------------------------------------
-# Main
-# --------------------------------------------------------------------------
+def find_material_app(project_root: Path, explicit: str | None) -> Path:
+    if explicit:
+        path = Path(explicit)
+        return path if path.is_absolute() else project_root / path
+
+    candidates = []
+    for path in sorted((project_root / "lib").rglob("*.dart")):
+        if re.search(r"\bMaterialApp(?:\.router)?\s*\(", _code_mask(path.read_text())):
+            candidates.append(path)
+    if not candidates:
+        raise ValueError("No MaterialApp was found under lib/")
+    if len(candidates) > 1:
+        listed = "\n    ".join(str(path) for path in candidates)
+        raise ValueError(f"Multiple MaterialApp files found; select one with --dart:\n    {listed}")
+    return candidates[0]
+
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Add debugging_tools to a Flutter project.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "project_path",
+        nargs="?",
+        help="Flutter project folder (default: current folder)",
+    )
+    parser.add_argument(
+        "--project",
+        dest="project_option",
+        help="Flutter project folder (alternative to the positional argument)",
     )
     parser.add_argument(
         "--pubspec",
-        default="pubspec.yaml",
-        help="Path to pubspec.yaml (default: ./pubspec.yaml)",
+        help="pubspec path, relative to the project folder by default",
     )
-    parser.add_argument(
-        "--dart",
-        default="lib/main.dart",
-        help="Path to the Dart file that contains MaterialApp (default: lib/main.dart)",
-    )
+    parser.add_argument("--dart", help="Dart file to edit (otherwise searches PROJECT/lib)")
     args = parser.parse_args()
+    if args.project_path and args.project_option:
+        parser.error("provide the project either positionally or with --project, not both")
 
-    pubspec_path = Path(args.pubspec)
-    dart_path = Path(args.dart)
+    project = Path(args.project_option or args.project_path or ".").expanduser().resolve()
+    if args.pubspec:
+        supplied_pubspec = Path(args.pubspec).expanduser()
+        pubspec = supplied_pubspec if supplied_pubspec.is_absolute() else project / supplied_pubspec
+    else:
+        pubspec = project / "pubspec.yaml"
 
-    # Validate
-    if not pubspec_path.exists():
-        print(f"❌  pubspec.yaml not found: {pubspec_path}")
+    try:
+        if not pubspec.is_file():
+            raise ValueError(f"pubspec.yaml not found: {pubspec}")
+        dart = find_material_app(project, args.dart)
+        if not dart.is_file():
+            raise ValueError(f"Dart file not found: {dart}")
+
+        print(f"📦  Project: {project}")
+        print(f"🎯  MaterialApp: {dart}")
+        add_pubspec_dependency(pubspec)
+        original = dart.read_text(encoding="utf-8")
+        updated = add_import(wrap_material_app(original))
+        if updated != original:
+            dart.write_text(updated, encoding="utf-8")
+        print("\nNext: run `flutter pub get` and format the changed Dart file.")
+        print("Add custom drawer entries with DebuggingToolsWrapper.extraPanels.")
+    except (OSError, ValueError) as error:
+        print(f"❌  {error}", file=sys.stderr)
         sys.exit(1)
-    if not dart_path.exists():
-        print(f"❌  Dart file not found: {dart_path}")
-        sys.exit(1)
-
-    print(f"\n📦  Project: {pubspec_path.parent.resolve()}\n")
-
-    # 1. pubspec
-    add_pubspec_dependency(pubspec_path)
-
-    # 2. Dart file
-    dart_text = dart_path.read_text(encoding="utf-8")
-    dart_text = add_import(dart_text)
-    dart_text = wrap_builder_return(dart_text)
-    dart_path.write_text(dart_text, encoding="utf-8")
-
-    print(
-        "\n────────────────────────────────────────────────────────────────────\n"
-        "  Next steps\n"
-        "────────────────────────────────────────────────────────────────────\n"
-        "  1. Run:  flutter pub get\n"
-        "  2. Customise the DebuggingToolsWrapper in your MaterialApp builder:\n"
-        "       • showSharedPreferencesPanel: true/false\n"
-        "       • showNavigationPanel:        true/false\n"
-        "       • showLocalStoragePanel:      true/false\n"
-        "       • routes:                     { '/name': (ctx) => Screen() }\n"
-        "       • localStorageBuilder:        (ctx) => MyStorageWidget()\n"
-        "       • extraPanels:                [ CustomConfigPanel.item(...) ]\n"
-        "  3. The 🐛 button appears at the top-left; drag it anywhere.\n"
-        "────────────────────────────────────────────────────────────────────\n"
-    )
 
 
 if __name__ == "__main__":

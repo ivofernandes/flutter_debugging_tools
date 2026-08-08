@@ -49,7 +49,7 @@ Add the package to `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  flutter_debugging_tools: ^0.0.2
+  flutter_debugging_tools: ^0.0.1
 ```
 
 Then import it:
@@ -57,6 +57,28 @@ Then import it:
 ```dart
 import 'package:flutter_debugging_tools/flutter_debugging_tools.dart';
 ```
+
+The repository also includes a one-command installer. Give the shell launcher
+the folder of any Flutter app (relative paths, absolute paths, and paths with
+spaces are supported):
+
+```shell
+path/to/flutter_debugging_tools/scripts/dev/add_debugging_tools.sh \
+  path/to/your_flutter_app
+```
+
+The launcher updates the dependency, finds the Dart file containing
+`MaterialApp`, adds the import, and installs the wrapper without discarding an
+existing `builder`. With no folder argument it updates the current folder. If
+the app has multiple `MaterialApp` files, select one with
+`--dart lib/path/to/app.dart`:
+
+```shell
+path/to/add_debugging_tools.sh ../another_app --dart lib/app.dart
+```
+
+You can invoke `add_debugging_tools.py` directly with the same positional
+folder argument. The command is safe to run again after configuration.
 
 ## Quick start
 
