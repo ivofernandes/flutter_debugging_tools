@@ -18,6 +18,7 @@ import '../panels/network_logs_panel.dart';
 import '../panels/network_request_panel.dart';
 import '../panels/shared_preferences_panel.dart';
 import '../panels/sqlite_browser_panel.dart';
+import '../tools/screen_size_simulator.dart';
 import 'debugging_drawer.dart';
 import 'debugging_settings_button.dart';
 
@@ -74,6 +75,7 @@ class DebuggingToolsWrapper extends StatefulWidget {
     this.showNetworkRequestPanel = false,
     this.showNetworkLogsPanel = false,
     this.showAppLogsPanel = false,
+    this.showScreenSizeSimulator = true,
     this.extraPanels = const [],
     this.routes = const {},
     this.historyObserver,
@@ -135,6 +137,9 @@ class DebuggingToolsWrapper extends StatefulWidget {
 
   /// Shows application logs captured by [appLogger] or [AppLogger.instance].
   final bool showAppLogsPanel;
+
+  /// Shows screen-size simulation controls in the debug drawer.
+  final bool showScreenSizeSimulator;
 
   /// Additional custom panels appended after the built-in ones.
   final List<DebugPanelItem> extraPanels;
@@ -213,6 +218,8 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
   Database? _autoSqliteDatabase;
   String? _autoSqliteDatabasePath;
   double? _userDrawerWidth;
+  final ScreenSizeSimulatorController _screenSizeController =
+      ScreenSizeSimulatorController();
 
   FileSystemDebugController? get _effectiveFileSystemController =>
       widget.fileSystemController ?? _autoFileSystemController;
@@ -260,6 +267,7 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
   void dispose() {
     _autoFileSystemController?.dispose();
     _closeAutoSqliteDatabase();
+    _screenSizeController.dispose();
     super.dispose();
   }
 
@@ -356,6 +364,11 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
 
   List<DebugPanelItem> _buildPanels() {
     return [
+      if (widget.showScreenSizeSimulator)
+        DebugPanelItem(
+          'Screen Size',
+          ScreenSizeSimulatorPanel(controller: _screenSizeController),
+        ),
       if (widget.showSharedPreferencesPanel)
         DebugPanelItem(
           'Shared Preferences',
@@ -504,7 +517,11 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
       ),
       body: Stack(
         children: [
-          widget.child ?? const SizedBox.shrink(),
+          ScreenSizeSimulator(
+            controller: _screenSizeController,
+            showControls: false,
+            child: widget.child ?? const SizedBox.shrink(),
+          ),
           DebuggingSettingsButton(scaffoldKey: _scaffoldKey),
         ],
       ),

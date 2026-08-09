@@ -230,6 +230,41 @@ void main() {
       expect(find.byType(DebuggingSettingsButton), findsOneWidget);
       expect(find.byType(Scaffold), findsOneWidget);
     });
+
+    testWidgets('offers screen size simulation in the drawer by default', (
+      WidgetTester tester,
+    ) async {
+      Size? appSize;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DebuggingToolsWrapper(
+            enabled: true,
+            showFileSystemPanel: false,
+            showSQLiteBrowserPanel: false,
+            child: Builder(
+              builder: (context) {
+                appSize = MediaQuery.sizeOf(context);
+                return const SizedBox.expand();
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(DebuggingSettingsButton));
+      await tester.pumpAndSettle();
+      expect(find.text('Screen Size'), findsOneWidget);
+
+      await tester.tap(find.text('Screen Size'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Viewport preset'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Phone').last);
+      await tester.pumpAndSettle();
+
+      expect(appSize, const Size(375, 600));
+      expect(find.text('375 × 812'), findsOneWidget);
+    });
   });
 
   group('DebugPanelItem', () {

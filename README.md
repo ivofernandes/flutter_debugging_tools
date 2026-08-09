@@ -16,6 +16,7 @@ screens.
 - [Features](#features)
 - [Installation](#installation)
 - [Quick start](#quick-start)
+- [Simulating screen sizes](#simulating-screen-sizes)
 - [Using the drawer](#using-the-drawer)
 - [Using application logs](#using-application-logs)
 - [Using network logs](#using-network-logs)
@@ -39,6 +40,7 @@ screens.
 | **Network logs** | Display requests made through `DebugHttpClient`, including status/failure summaries and copyable cURL commands. | Reproduce a request outside the app or share a failing endpoint with a teammate. |
 | **App logs** | Capture structured, timestamped in-memory logs with severity levels, tags, errors, and stack traces. Search, filter, copy, or clear them in the drawer. | Follow user actions and state transitions, correlate failures, and collect a focused bug report. |
 | **Custom panels** | Add any app-specific widget to the drawer. | Control feature flags, simulate state machines, or expose domain-specific diagnostics. |
+| **Screen Size** | Enable phone, tablet, rotated, or custom viewport dimensions from the drawer. | Test responsive breakpoints without resizing the emulator or host window. |
 
 The drawer can also be resized for wide tables and logs, and its floating bug
 button can be dragged out of the way.
@@ -114,6 +116,32 @@ Most local inspection features require no further configuration. The file
 browser uses `getApplicationDocumentsDirectory()`, the SQLite browser searches
 that directory for `.db`, `.sqlite`, and `.sqlite3` files, and the asset browser
 reads Flutter's asset manifest.
+
+## Simulating screen sizes
+
+Screen-size simulation is included in `DebuggingToolsWrapper` by default. Open
+the debug drawer, expand **Screen Size**, enable the switch, and choose a preset
+or use the width and height sliders. No additional example-app integration is
+required. Set `showScreenSizeSimulator: false` to hide this tool.
+
+If an application does not use `DebuggingToolsWrapper`, the standalone
+`ScreenSizeSimulator` can instead be placed in `MaterialApp.builder`:
+
+```dart
+MaterialApp(
+  builder: (context, child) => ScreenSizeSimulator(
+    enabled: true, // Prefer a value from your app's debug settings.
+    child: child ?? const SizedBox.shrink(),
+  ),
+  home: const HomeScreen(),
+);
+```
+
+The overlay constrains the visible application and overrides its nested
+`MediaQuery`, so `MediaQuery.sizeOf(context)` agrees with the selected viewport.
+Preset and rotated dimensions are clamped to the host window. The simulator
+returns its child unchanged in release builds even if `enabled` is accidentally
+left on.
 
 ## Using the drawer
 
