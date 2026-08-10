@@ -85,9 +85,7 @@ void main() {
       expect(find.text('panel body content'), findsOneWidget);
     });
 
-    testWidgets('shows resize handle by default', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('shows resize handle by default', (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -117,10 +115,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            drawer: DebuggingDrawer(
-              panels: [],
-              widthFactor: 1,
-            ),
+            drawer: DebuggingDrawer(panels: [], widthFactor: 1),
             body: SizedBox.shrink(),
           ),
         ),
@@ -143,9 +138,10 @@ void main() {
       WidgetTester tester,
     ) async {
       final bundle = _FakeAssetBundle({
-        'AssetManifest.json': '{"assets/config.json":["assets/config.json"],'
-                '"images/logo.png":["images/logo.png"]}'
-            .codeUnits,
+        'AssetManifest.json':
+            '{"assets/config.json":["assets/config.json"],'
+                    '"images/logo.png":["images/logo.png"]}'
+                .codeUnits,
         'assets/config.json': '{"api":"local"}'.codeUnits,
         'images/logo.png': _transparentPngBytes,
       });
@@ -172,8 +168,8 @@ void main() {
       WidgetTester tester,
     ) async {
       final bundle = _FakeAssetBundle({
-        'AssetManifest.json': '{"images/logo.png":["images/logo.png"]}'
-            .codeUnits,
+        'AssetManifest.json':
+            '{"images/logo.png":["images/logo.png"]}'.codeUnits,
         'images/logo.png': _transparentPngBytes,
       });
 
@@ -257,13 +253,11 @@ void main() {
 
       await tester.tap(find.text('Screen Size'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Viewport preset'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Phone').last);
-      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Width'), '375');
+      await tester.pump();
 
       expect(appSize, const Size(375, 600));
-      expect(find.text('375 × 812'), findsOneWidget);
+      expect(find.text('375 × 600'), findsOneWidget);
     });
   });
 

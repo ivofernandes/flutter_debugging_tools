@@ -57,7 +57,7 @@ void main() {
     expect(find.text('500 × 375'), findsOneWidget);
   });
 
-  testWidgets('preset is clamped to the available host size', (tester) async {
+  testWidgets('presets larger than the host are not offered', (tester) async {
     Size? mediaQuerySize;
     await _pumpSimulator(
       tester,
@@ -70,13 +70,44 @@ void main() {
       ),
     );
 
+    expect(find.text('500 × 600'), findsOneWidget);
     await tester.tap(find.byTooltip('Select viewport'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Tablet landscape'));
     await tester.pumpAndSettle();
 
     expect(mediaQuerySize, const Size(500, 600));
-    expect(find.text('500 × 600'), findsOneWidget);
+    expect(find.text('Tablet'), findsNothing);
+    expect(find.text('Tablet landscape'), findsNothing);
+  });
+
+  testWidgets('exact dimensions update the viewport and sliders', (
+    tester,
+  ) async {
+    Size? mediaQuerySize;
+    await _pumpSimulator(
+      tester,
+      hostSize: const Size(500, 600),
+      child: Builder(
+        builder: (context) {
+          mediaQuerySize = MediaQuery.sizeOf(context);
+          return const SizedBox.expand();
+        },
+      ),
+    );
+
+    final widthField = find.widgetWithText(TextField, 'Width');
+    await tester.enterText(widthField, '321');
+    await tester.pump();
+
+    expect(mediaQuerySize, const Size(321, 600));
+    expect(find.text('321 × 600'), findsOneWidget);
+    final widthSlider = tester.widget<Slider>(find.byType(Slider).first);
+    expect(widthSlider.value, 321);
+
+    await tester.enterText(widthField, '501');
+    await tester.pump();
+
+    expect(mediaQuerySize, const Size(321, 600));
+    expect(tester.widget<Slider>(find.byType(Slider).first).value, 321);
   });
 }
 

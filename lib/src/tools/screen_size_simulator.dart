@@ -100,10 +100,7 @@ class _ScreenSizeSimulatorState extends State<ScreenSizeSimulator> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final availableSize = Size(
-          constraints.maxWidth,
-          constraints.maxHeight,
-        );
+        final availableSize = Size(constraints.maxWidth, constraints.maxHeight);
         final requestedSize =
             controller?.viewport ?? _viewport ?? availableSize;
         final viewport = Size(
@@ -169,7 +166,13 @@ class ScreenSizeSimulatorPanel extends StatelessWidget {
       listenable: controller,
       builder: (context, _) {
         final available = MediaQuery.sizeOf(context);
-        final viewport = controller.viewport ?? available;
+        final viewport = _clampViewport(
+          controller.viewport ?? available,
+          available,
+        );
+        final fittingViewports = viewports
+            .where((item) => _fitsWithin(item.size, available))
+            .toList();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -184,11 +187,11 @@ class ScreenSizeSimulatorPanel extends StatelessWidget {
             ),
             DropdownButtonFormField<Size>(
               decoration: const InputDecoration(labelText: 'Viewport preset'),
-              value: viewports.any((item) => item.size == controller.viewport)
-                  ? controller.viewport
+              value: fittingViewports.any((item) => item.size == viewport)
+                  ? viewport
                   : null,
               items: [
-                for (final preset in viewports)
+                for (final preset in fittingViewports)
                   DropdownMenuItem(
                     value: preset.size,
                     child: Text(preset.name),
@@ -256,6 +259,9 @@ class _ViewportControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fittingViewports = viewports
+        .where((item) => _fitsWithin(item.size, availableSize))
+        .toList();
     return Material(
       elevation: 8,
       borderRadius: BorderRadius.circular(12),
@@ -276,16 +282,15 @@ class _ViewportControls extends StatelessWidget {
                   ),
                   IconButton(
                     tooltip: 'Rotate viewport',
-                    onPressed: () => onChanged(
-                      Size(viewport.height, viewport.width),
-                    ),
+                    onPressed: () =>
+                        onChanged(Size(viewport.height, viewport.width)),
                     icon: const Icon(Icons.screen_rotation),
                   ),
                   PopupMenuButton<Size>(
                     tooltip: 'Select viewport',
                     onSelected: onChanged,
                     itemBuilder: (context) => [
-                      for (final preset in viewports)
+                      for (final preset in fittingViewports)
                         PopupMenuItem(
                           value: preset.size,
                           child: Text(preset.name),
@@ -302,17 +307,13 @@ class _ViewportControls extends StatelessWidget {
                 label: 'Width',
                 value: viewport.width,
                 max: availableSize.width,
-                onChanged: (value) => onChanged(
-                  Size(value, viewport.height),
-                ),
+                onChanged: (value) => onChanged(Size(value, viewport.height)),
               ),
               _DimensionSlider(
                 label: 'Height',
                 value: viewport.height,
                 max: availableSize.height,
-                onChanged: (value) => onChanged(
-                  Size(viewport.width, value),
-                ),
+                onChanged: (value) => onChanged(Size(viewport.width, value)),
               ),
             ],
           ),
@@ -322,7 +323,15 @@ class _ViewportControls extends StatelessWidget {
   }
 }
 
-class _DimensionSlider extends StatelessWidget {
+bool _fitsWithin(Size size, Size available) =>
+    size.width <= available.width && size.height <= available.height;
+
+Size _clampViewport(Size size, Size available) => Size(
+  size.width.clamp(1, available.width < 1 ? 1 : available.width).toDouble(),
+  size.height.clamp(1, available.height < 1 ? 1 : available.height).toDouble(),
+);
+
+class _DimensionSlider extends StatefulWidget {
   const _DimensionSlider({
     required this.label,
     required this.value,
@@ -336,17 +345,67 @@ class _DimensionSlider extends StatelessWidget {
   final ValueChanged<double> onChanged;
 
   @override
+  State<_DimensionSlider> createState() => _DimensionSliderState();
+}
+
+class _DimensionSliderState extends State<_DimensionSlider> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value.round().toString());
+  }
+
+  @override
+  void didUpdateWidget(covariant _DimensionSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final enteredValue = double.tryParse(_controller.text);
+    if (oldWidget.value != widget.value && enteredValue != widget.value) {
+      _controller.text = widget.value.round().toString();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _updateIfValid(String text) {
+    final parsed = double.tryParse(text);
+    final effectiveMax = widget.max < 1 ? 1.0 : widget.max;
+    if (parsed != null && parsed >= 1 && parsed <= effectiveMax) {
+      widget.onChanged(parsed);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final effectiveMax = max < 1 ? 1.0 : max;
+    final effectiveMax = widget.max < 1 ? 1.0 : widget.max;
     return Row(
       children: [
-        SizedBox(width: 52, child: Text(label)),
+        SizedBox(width: 52, child: Text(widget.label)),
         Expanded(
           child: Slider(
             min: 1,
             max: effectiveMax,
-            value: value.clamp(1, effectiveMax).toDouble(),
-            onChanged: onChanged,
+            value: widget.value.clamp(1, effectiveMax).toDouble(),
+            onChanged: widget.onChanged,
+          ),
+        ),
+        SizedBox(
+          width: 72,
+          child: TextField(
+            controller: _controller,
+            decoration: InputDecoration(
+              labelText: widget.label,
+              isDense: true,
+              suffixText: 'px',
+            ),
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
+            onChanged: _updateIfValid,
           ),
         ),
       ],
