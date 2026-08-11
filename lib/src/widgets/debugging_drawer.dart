@@ -232,7 +232,7 @@ class _DebuggingDrawerState extends State<DebuggingDrawer> {
                                         ),
                                       );
                                     },
-                                body: ColoredBox(
+                                body: Material(
                                   color: colors.surface,
                                   child: Padding(
                                     padding: const EdgeInsets.only(

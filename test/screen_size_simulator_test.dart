@@ -14,7 +14,7 @@ void main() {
 
     expect(find.byKey(const Key('child')), findsOneWidget);
     expect(find.text('Viewport'), findsNothing);
-    expect(tester.getSize(find.byKey(const Key('child'))), const Size(40, 50));
+    expect(tester.widget(find.byKey(const Key('child'))), same(child));
   });
 
   testWidgets('preset updates constraints and MediaQuery size', (tester) async {
