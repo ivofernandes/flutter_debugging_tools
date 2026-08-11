@@ -6,11 +6,7 @@ import 'package:flutter/services.dart';
 
 /// Debug UI for inspecting assets declared in the app bundle manifest.
 class AssetBundlePanel extends StatefulWidget {
-  const AssetBundlePanel({
-    this.bundle,
-    this.compact = false,
-    super.key,
-  });
+  const AssetBundlePanel({this.bundle, this.compact = false, super.key});
 
   /// Asset bundle to inspect. Defaults to Flutter's [rootBundle].
   final AssetBundle? bundle;
@@ -246,9 +242,7 @@ class _AssetPreviewView extends StatelessWidget {
                 color: Colors.black.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: SingleChildScrollView(
-                child: previewContent,
-              ),
+              child: SingleChildScrollView(child: previewContent),
             ),
           ],
         );

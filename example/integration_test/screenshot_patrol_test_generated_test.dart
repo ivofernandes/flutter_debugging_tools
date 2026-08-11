@@ -8,10 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:patrol/patrol.dart';
 import '../lib/main.dart' as app;
 
-Future<void> captureScreenshot(
-  PatrolIntegrationTester $,
-  String name,
-) async {
+Future<void> captureScreenshot(PatrolIntegrationTester $, String name) async {
   final TestWidgetsFlutterBinding binding = $.tester.binding;
   final RenderView renderView = binding.renderViews.first;
   final ContainerLayer? layer = renderView.debugLayer;
@@ -29,25 +26,25 @@ Future<void> captureScreenshot(
   );
   scene.dispose();
   try {
-    final ByteData? byteData =
-        await image.toByteData(format: ui.ImageByteFormat.png);
+    final ByteData? byteData = await image.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
     if (byteData == null) {
       throw StateError('Screenshot capture returned no PNG bytes.');
     }
     final Uint8List bytes = byteData.buffer.asUint8List();
     final Directory outputDir = await _patrolScreenshotDir();
-    final String safeName =
-        name.replaceAll(RegExp(r'[^a-zA-Z0-9_.-]'), '_');
-    await File('${outputDir.path}/$safeName.png')
-        .writeAsBytes(bytes, flush: true);
+    final String safeName = name.replaceAll(RegExp(r'[^a-zA-Z0-9_.-]'), '_');
+    await File(
+      '${outputDir.path}/$safeName.png',
+    ).writeAsBytes(bytes, flush: true);
   } finally {
     image.dispose();
   }
 }
 
 Future<Directory> _patrolScreenshotDir() async {
-  const String explicitDir =
-      String.fromEnvironment('PATROL_SCREENSHOT_DIR');
+  const String explicitDir = String.fromEnvironment('PATROL_SCREENSHOT_DIR');
   if (explicitDir.isNotEmpty) {
     try {
       final Directory dir = Directory(explicitDir);
@@ -81,8 +78,10 @@ void main() {
     }
 
     $.log('Patrol: capturing screenshot');
-    await captureScreenshot($, 'app_launch')
-        .timeout(const Duration(seconds: 10));
+    await captureScreenshot(
+      $,
+      'app_launch',
+    ).timeout(const Duration(seconds: 10));
     $.log('Patrol: screenshot captured');
   });
 }

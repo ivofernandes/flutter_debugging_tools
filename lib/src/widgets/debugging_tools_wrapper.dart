@@ -390,10 +390,7 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
           LocalStoragePanel(customBuilder: widget.localStorageBuilder),
         ),
       if (widget.showAssetBundlePanel)
-        DebugPanelItem(
-          'Asset Bundle',
-          const AssetBundlePanel(compact: true),
-        ),
+        DebugPanelItem('Asset Bundle', const AssetBundlePanel(compact: true)),
       if (widget.showFileSystemPanel && _effectiveFileSystemController != null)
         DebugPanelItem(
           'Files',

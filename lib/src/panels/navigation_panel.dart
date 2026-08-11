@@ -118,10 +118,7 @@ class _NavigationPanelState extends State<NavigationPanel> {
 }
 
 class _RouteTreeWidget extends StatelessWidget {
-  const _RouteTreeWidget({
-    required this.routes,
-    required this.onRouteSelected,
-  });
+  const _RouteTreeWidget({required this.routes, required this.onRouteSelected});
 
   final Iterable<String> routes;
   final ValueChanged<String> onRouteSelected;

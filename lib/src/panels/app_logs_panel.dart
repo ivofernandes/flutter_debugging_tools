@@ -118,30 +118,23 @@ class _AppLogsPanelState extends State<AppLogsPanel> {
                 padding: EdgeInsets.only(top: 8),
                 child: Text('No app logs match the current filter.'),
               )
-            else
-              if (widget.compact)
-                SizedBox(
-                  height: 320,
-                  child: _LogList(
-                    logs: visibleLogs,
-                    onCopy: (entry) => _copyText(
-                      context,
-                      entry.copyText,
-                      'Log copied',
-                    ),
-                  ),
-                )
-              else
-                Expanded(
-                  child: _LogList(
-                    logs: visibleLogs,
-                    onCopy: (entry) => _copyText(
-                      context,
-                      entry.copyText,
-                      'Log copied',
-                    ),
-                  ),
+            else if (widget.compact)
+              SizedBox(
+                height: 320,
+                child: _LogList(
+                  logs: visibleLogs,
+                  onCopy: (entry) =>
+                      _copyText(context, entry.copyText, 'Log copied'),
                 ),
+              )
+            else
+              Expanded(
+                child: _LogList(
+                  logs: visibleLogs,
+                  onCopy: (entry) =>
+                      _copyText(context, entry.copyText, 'Log copied'),
+                ),
+              ),
           ],
         );
       },
@@ -177,10 +170,8 @@ class _LogList extends StatelessWidget {
     return ListView.separated(
       itemCount: logs.length,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, index) => _LogCard(
-        entry: logs[index],
-        onCopy: () => onCopy(logs[index]),
-      ),
+      itemBuilder: (context, index) =>
+          _LogCard(entry: logs[index], onCopy: () => onCopy(logs[index])),
     );
   }
 }

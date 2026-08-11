@@ -121,10 +121,11 @@ class _DebuggingDrawerState extends State<DebuggingDrawer> {
     super.didChangeDependencies();
     if (_restoredWidth) return;
     _restoredWidth = true;
-    _resizedWidth = PageStorage.maybeOf(context)?.readState(
-      context,
-      identifier: widget.key ?? DebuggingDrawer,
-    ) as double?;
+    _resizedWidth =
+        PageStorage.maybeOf(
+              context,
+            )?.readState(context, identifier: widget.key ?? DebuggingDrawer)
+            as double?;
   }
 
   @override
@@ -134,13 +135,14 @@ class _DebuggingDrawerState extends State<DebuggingDrawer> {
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final widthFactor = widget.widthFactor;
-    final configuredWidth = widget.width ??
+    final configuredWidth =
+        widget.width ??
         (widthFactor == null ? null : screenWidth * widthFactor);
     final maxResizableWidth = widget.maxWidth ?? screenWidth;
     final width = widget.resizable
         ? (_resizedWidth ?? configuredWidth ?? widget.minWidth)
-            .clamp(widget.minWidth, maxResizableWidth)
-            .toDouble()
+              .clamp(widget.minWidth, maxResizableWidth)
+              .toDouble()
         : configuredWidth;
 
     return Drawer(
@@ -208,47 +210,52 @@ class _DebuggingDrawerState extends State<DebuggingDrawer> {
                                 ),
                               ),
                               ExpansionPanelList(
-                            expansionCallback: (int index, bool isExpanded) {
-                              setState(() {
-                                _panels[index].expanded = isExpanded;
-                              });
-                            },
-                            children: _panels.map<ExpansionPanel>((
-                              DebugPanelItem panel,
-                            ) {
-                              return ExpansionPanel(
-                                headerBuilder:
-                                    (BuildContext context, bool isExpanded) {
-                                      return Container(
-                                        alignment: Alignment.centerLeft,
-                                        padding: const EdgeInsets.only(
-                                          left: 16,
-                                        ),
-                                        child: Text(
-                                          panel.title,
-                                          style: textTheme.titleSmall?.copyWith(
-                                            color: colors.onSurface,
-                                          ),
-                                        ),
-                                      );
+                                expansionCallback:
+                                    (int index, bool isExpanded) {
+                                      setState(() {
+                                        _panels[index].expanded = isExpanded;
+                                      });
                                     },
-                                body: ColoredBox(
-                                  color: colors.surface,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 8,
-                                      right: 8,
-                                      bottom: 16,
+                                children: _panels.map<ExpansionPanel>((
+                                  DebugPanelItem panel,
+                                ) {
+                                  return ExpansionPanel(
+                                    headerBuilder:
+                                        (
+                                          BuildContext context,
+                                          bool isExpanded,
+                                        ) {
+                                          return Container(
+                                            alignment: Alignment.centerLeft,
+                                            padding: const EdgeInsets.only(
+                                              left: 16,
+                                            ),
+                                            child: Text(
+                                              panel.title,
+                                              style: textTheme.titleSmall
+                                                  ?.copyWith(
+                                                    color: colors.onSurface,
+                                                  ),
+                                            ),
+                                          );
+                                        },
+                                    body: ColoredBox(
+                                      color: colors.surface,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 8,
+                                          right: 8,
+                                          bottom: 16,
+                                        ),
+                                        child: panel.body,
+                                      ),
                                     ),
-                                    child: panel.body,
-                                  ),
-                                ),
-                                backgroundColor: colors.surfaceContainerLow,
-                                isExpanded: panel.expanded,
-                                canTapOnHeader: true,
-                              );
-                            }).toList(),
-                          ),
+                                    backgroundColor: colors.surfaceContainerLow,
+                                    isExpanded: panel.expanded,
+                                    canTapOnHeader: true,
+                                  );
+                                }).toList(),
+                              ),
                             ],
                           ),
                         ),
@@ -275,13 +282,12 @@ class _DebuggingDrawerState extends State<DebuggingDrawer> {
                   },
                   onHorizontalDragUpdate: (details) {
                     setState(() {
-                      final nextWidth = ((_dragStartWidth ??
-                                  width ??
-                                  widget.minWidth) +
-                              details.globalPosition.dx -
-                              (_dragStartX ?? details.globalPosition.dx))
-                          .clamp(widget.minWidth, maxResizableWidth)
-                          .toDouble();
+                      final nextWidth =
+                          ((_dragStartWidth ?? width ?? widget.minWidth) +
+                                  details.globalPosition.dx -
+                                  (_dragStartX ?? details.globalPosition.dx))
+                              .clamp(widget.minWidth, maxResizableWidth)
+                              .toDouble();
                       _resizedWidth = nextWidth;
                       PageStorage.maybeOf(context)?.writeState(
                         context,

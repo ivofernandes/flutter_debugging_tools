@@ -421,38 +421,25 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           FilledButton.tonal(
-            onPressed: () => _openRoute(
-              context,
-              '/files',
-              'Open file screen',
-            ),
+            onPressed: () => _openRoute(context, '/files', 'Open file screen'),
             child: const Text('Open file screen'),
           ),
           const SizedBox(height: 8),
           FilledButton.tonal(
-            onPressed: () => _openRoute(
-              context,
-              '/state',
-              'Open state machine screen',
-            ),
+            onPressed: () =>
+                _openRoute(context, '/state', 'Open state machine screen'),
             child: const Text('Open state machine screen'),
           ),
           const SizedBox(height: 8),
           FilledButton.tonal(
-            onPressed: () => _openRoute(
-              context,
-              '/network',
-              'Open network screen',
-            ),
+            onPressed: () =>
+                _openRoute(context, '/network', 'Open network screen'),
             child: const Text('Open network screen'),
           ),
           const SizedBox(height: 8),
           FilledButton.tonal(
-            onPressed: () => _openRoute(
-              context,
-              '/database',
-              'Open SQLite screen',
-            ),
+            onPressed: () =>
+                _openRoute(context, '/database', 'Open SQLite screen'),
             child: const Text('Open SQLite screen'),
           ),
         ],

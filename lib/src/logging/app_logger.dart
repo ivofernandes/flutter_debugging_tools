@@ -34,41 +34,20 @@ class AppLogger extends ChangeNotifier {
 
   String get copyText => entries.map((entry) => entry.copyText).join('\n');
 
-  AppLogEntry trace(dynamic event, {List<String> tags = const []}) => log(
-        AppLogLevel.trace,
-        event,
-        tags: tags,
-      );
+  AppLogEntry trace(dynamic event, {List<String> tags = const []}) =>
+      log(AppLogLevel.trace, event, tags: tags);
 
-  AppLogEntry debug(dynamic event, {List<String> tags = const []}) => log(
-        AppLogLevel.debug,
-        event,
-        tags: tags,
-      );
+  AppLogEntry debug(dynamic event, {List<String> tags = const []}) =>
+      log(AppLogLevel.debug, event, tags: tags);
 
-  AppLogEntry info(dynamic event, {List<String> tags = const []}) => log(
-        AppLogLevel.info,
-        event,
-        tags: tags,
-      );
+  AppLogEntry info(dynamic event, {List<String> tags = const []}) =>
+      log(AppLogLevel.info, event, tags: tags);
 
-  AppLogEntry warning(dynamic event, {List<String> tags = const []}) => log(
-        AppLogLevel.warning,
-        event,
-        tags: tags,
-      );
+  AppLogEntry warning(dynamic event, {List<String> tags = const []}) =>
+      log(AppLogLevel.warning, event, tags: tags);
 
-  AppLogEntry error(
-    dynamic event, [
-    Object? error,
-    StackTrace? stackTrace,
-  ]) =>
-      log(
-        AppLogLevel.error,
-        event,
-        error: error,
-        stackTrace: stackTrace,
-      );
+  AppLogEntry error(dynamic event, [Object? error, StackTrace? stackTrace]) =>
+      log(AppLogLevel.error, event, error: error, stackTrace: stackTrace);
 
   AppLogEntry log(
     AppLogLevel level,
@@ -132,12 +111,12 @@ class AppLogger extends ChangeNotifier {
   }
 
   int _developerLevel(AppLogLevel level) => switch (level) {
-        AppLogLevel.trace => 500,
-        AppLogLevel.debug => 700,
-        AppLogLevel.info => 800,
-        AppLogLevel.warning => 900,
-        AppLogLevel.error => 1000,
-      };
+    AppLogLevel.trace => 500,
+    AppLogLevel.debug => 700,
+    AppLogLevel.info => 800,
+    AppLogLevel.warning => 900,
+    AppLogLevel.error => 1000,
+  };
 }
 
 /// Convenient top-level handle for the shared application logger.
