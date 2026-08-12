@@ -157,7 +157,7 @@ class _DebuggingDrawerState extends State<DebuggingDrawer> {
                   builder: (context) {
                     return SafeArea(
                       child: SingleChildScrollView(
-                        child: ColoredBox(
+                        child: Material(
                           color: colors.surface,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,7 +239,7 @@ class _DebuggingDrawerState extends State<DebuggingDrawer> {
                                             ),
                                           );
                                         },
-                                    body: ColoredBox(
+                                    body: Material(
                                       color: colors.surface,
                                       child: Padding(
                                         padding: const EdgeInsets.only(

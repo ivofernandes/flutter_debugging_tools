@@ -273,12 +273,16 @@ class _ViewportControls extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Viewport'),
+              ),
               Row(
                 children: [
-                  const Text('Viewport'),
-                  const Spacer(),
-                  Text(
-                    '${viewport.width.round()} × ${viewport.height.round()}',
+                  Expanded(
+                    child: Text(
+                      '${viewport.width.round()} × ${viewport.height.round()}',
+                    ),
                   ),
                   IconButton(
                     tooltip: 'Rotate viewport',
