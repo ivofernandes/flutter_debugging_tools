@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../widgets/searchable_text_preview.dart';
+
 /// Controls a [FileSystemPanel] rooted at a directory supplied by the host app.
 ///
 /// The controller owns the generic file-system operations that are useful in a
@@ -446,16 +448,15 @@ class _FileSystemPanelState extends State<FileSystemPanel> {
               const SizedBox(height: 6),
               Container(
                 width: double.infinity,
-                constraints: BoxConstraints(
-                  maxHeight: widget.compact ? 90 : 180,
-                ),
+                height: widget.compact ? 150 : 240,
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: SingleChildScrollView(
-                  child: SelectableText(selectedContent),
+                child: SearchableTextPreview(
+                  key: ValueKey(selected),
+                  text: selectedContent,
                 ),
               ),
             ],

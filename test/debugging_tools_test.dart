@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_debugging_tools/flutter_debugging_tools.dart';
@@ -162,6 +160,14 @@ void main() {
 
       expect(find.text('Selected asset: assets/config.json'), findsOneWidget);
       expect(find.text('{"api":"local"}'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const Key('text_preview_search')),
+        'LOCAL',
+      );
+      await tester.pump();
+
+      expect(find.text('1 match(es)'), findsOneWidget);
     });
 
     testWidgets('renders image assets as image previews', (

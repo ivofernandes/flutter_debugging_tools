@@ -187,7 +187,9 @@ class ScreenSizeSimulatorPanel extends StatelessWidget {
             ),
             DropdownButtonFormField<Size>(
               decoration: const InputDecoration(labelText: 'Viewport preset'),
-              value: fittingViewports.any((item) => item.size == viewport)
+              initialValue: fittingViewports.any(
+                (item) => item.size == viewport,
+              )
                   ? viewport
                   : null,
               items: [

@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../widgets/searchable_text_preview.dart';
 
 /// Debug UI for inspecting assets declared in the app bundle manifest.
 class AssetBundlePanel extends StatefulWidget {
@@ -222,12 +222,6 @@ class _AssetPreviewView extends StatelessWidget {
         }
 
         final preview = snapshot.data!;
-        final previewContent = preview.isImage
-            ? _ImageAssetPreview(bytes: preview.bytes)
-            : SelectableText(
-                preview.text ?? '<binary asset preview unavailable>',
-              );
-
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -236,13 +230,19 @@ class _AssetPreviewView extends StatelessWidget {
             const SizedBox(height: 6),
             Container(
               width: double.infinity,
-              constraints: BoxConstraints(maxHeight: compact ? 120 : 220),
+              height: compact ? 160 : 280,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: SingleChildScrollView(child: previewContent),
+              child: preview.isImage
+                  ? _ImageAssetPreview(bytes: preview.bytes)
+                  : SearchableTextPreview(
+                      key: ValueKey(assetKey),
+                      text:
+                          preview.text ?? '<binary asset preview unavailable>',
+                    ),
             ),
           ],
         );
@@ -258,14 +258,15 @@ class _ImageAssetPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return SizedBox.expand(
       child: Image.memory(
         bytes,
         key: const Key('asset_bundle_image_preview'),
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) {
-          return Text('Unable to render image preview: $error');
-        },
+        alignment: Alignment.center,
+        errorBuilder: (context, error, stackTrace) => Center(
+          child: Text('Unable to render image preview: $error'),
+        ),
       ),
     );
   }

@@ -16,7 +16,7 @@ import 'app_log_entry.dart';
 class AppLogger extends ChangeNotifier {
   factory AppLogger() => instance;
 
-  AppLogger._internal({this.maxEntries = 500, this.consoleSplitLength = 1000});
+  AppLogger._internal() : maxEntries = 500, consoleSplitLength = 1000;
 
   /// Creates an isolated logger when a screen, test, or package integration
   /// should not write to the shared singleton.
