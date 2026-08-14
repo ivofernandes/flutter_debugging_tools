@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 
-import '../widgets/searchable_text_preview.dart';
+import '../widgets/debug_file_preview.dart';
 
 /// Debug UI for inspecting assets declared in the app bundle manifest.
 class AssetBundlePanel extends StatefulWidget {
@@ -73,25 +76,19 @@ class _AssetBundlePanelState extends State<AssetBundlePanel> {
       bytes.offsetInBytes,
       bytes.lengthInBytes,
     );
-    final text = _decodeText(uint8);
+    final previewDirectory = Directory(
+      '${(await getTemporaryDirectory()).path}${Platform.pathSeparator}'
+      'flutter_debugging_tools_asset_previews',
+    );
+    await previewDirectory.create(recursive: true);
+    final safeName = assetKey.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    final file = await File(
+      '${previewDirectory.path}${Platform.pathSeparator}$safeName',
+    ).writeAsBytes(uint8, flush: true);
     return _AssetPreview(
       byteLength: uint8.length,
-      bytes: uint8,
-      isImage: _isSupportedImageAsset(assetKey),
-      text: text,
+      file: file,
     );
-  }
-
-  String? _decodeText(Uint8List bytes) {
-    if (bytes.isEmpty) return '';
-    try {
-      final text = const Utf8Decoder(allowMalformed: false).convert(bytes);
-      final controlCharacters = RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]');
-      if (controlCharacters.hasMatch(text)) return null;
-      return text;
-    } catch (_) {
-      return null;
-    }
   }
 
   void _selectAsset(String assetKey) {
@@ -99,17 +96,6 @@ class _AssetBundlePanelState extends State<AssetBundlePanel> {
       _selectedAsset = assetKey;
       _previewFuture = _loadPreview(assetKey);
     });
-  }
-
-  bool _isSupportedImageAsset(String assetKey) {
-    final lowerKey = assetKey.toLowerCase();
-    return lowerKey.endsWith('.png') ||
-        lowerKey.endsWith('.jpg') ||
-        lowerKey.endsWith('.jpeg') ||
-        lowerKey.endsWith('.gif') ||
-        lowerKey.endsWith('.webp') ||
-        lowerKey.endsWith('.bmp') ||
-        lowerKey.endsWith('.wbmp');
   }
 
   @override
@@ -236,13 +222,10 @@ class _AssetPreviewView extends StatelessWidget {
                 color: Colors.black.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: preview.isImage
-                  ? _ImageAssetPreview(bytes: preview.bytes)
-                  : SearchableTextPreview(
-                      key: ValueKey(assetKey),
-                      text:
-                          preview.text ?? '<binary asset preview unavailable>',
-                    ),
+              child: DebugFilePreview(
+                key: const Key('asset_bundle_file_preview'),
+                file: preview.file,
+              ),
             ),
           ],
         );
@@ -251,37 +234,12 @@ class _AssetPreviewView extends StatelessWidget {
   }
 }
 
-class _ImageAssetPreview extends StatelessWidget {
-  const _ImageAssetPreview({required this.bytes});
-
-  final Uint8List bytes;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox.expand(
-      child: Image.memory(
-        bytes,
-        key: const Key('asset_bundle_image_preview'),
-        fit: BoxFit.contain,
-        alignment: Alignment.center,
-        errorBuilder: (context, error, stackTrace) => Center(
-          child: Text('Unable to render image preview: $error'),
-        ),
-      ),
-    );
-  }
-}
-
 class _AssetPreview {
   const _AssetPreview({
     required this.byteLength,
-    required this.bytes,
-    required this.isImage,
-    required this.text,
+    required this.file,
   });
 
   final int byteLength;
-  final Uint8List bytes;
-  final bool isImage;
-  final String? text;
+  final File file;
 }

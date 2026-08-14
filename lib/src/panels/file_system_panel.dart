@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../widgets/searchable_text_preview.dart';
+import '../widgets/debug_file_preview.dart';
 
 /// Controls a [FileSystemPanel] rooted at a directory supplied by the host app.
 ///
@@ -45,6 +45,11 @@ class FileSystemDebugController extends ChangeNotifier {
 
   /// Human-readable root path for display in debug UIs.
   String get rootPath => _rootDirectory.path;
+
+  /// Returns the on-device file represented by a relative tree path.
+  File fileAt(String relativePath) => File(
+    '${_rootDirectory.path}${Platform.pathSeparator}$relativePath',
+  );
 
   /// Directories immediately inside [currentDirectoryPath].
   List<String> get childDirectories => childDirectoriesOf(currentDirectoryPath);
@@ -454,9 +459,9 @@ class _FileSystemPanelState extends State<FileSystemPanel> {
                   color: Colors.black.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: SearchableTextPreview(
+                child: DebugFilePreview(
                   key: ValueKey(selected),
-                  text: selectedContent,
+                  file: controller.fileAt(selected!),
                 ),
               ),
             ],

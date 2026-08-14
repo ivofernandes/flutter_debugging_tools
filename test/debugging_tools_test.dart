@@ -132,7 +132,7 @@ void main() {
   });
 
   group('AssetBundlePanel', () {
-    testWidgets('lists assets from the manifest and previews text assets', (
+    testWidgets('lists assets from the manifest and opens text assets', (
       WidgetTester tester,
     ) async {
       final bundle = _FakeAssetBundle({
@@ -159,15 +159,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Selected asset: assets/config.json'), findsOneWidget);
-      expect(find.text('{"api":"local"}'), findsOneWidget);
-
-      await tester.enterText(
-        find.byKey(const Key('text_preview_search')),
-        'LOCAL',
+      expect(
+        find.byKey(const Key('asset_bundle_file_preview')),
+        findsOneWidget,
       );
-      await tester.pump();
-
-      expect(find.text('1 match(es)'), findsOneWidget);
     });
 
     testWidgets('renders image assets as image previews', (
@@ -191,10 +186,35 @@ void main() {
 
       expect(find.text('Selected asset: images/logo.png'), findsOneWidget);
       expect(
-        find.byKey(const Key('asset_bundle_image_preview')),
+        find.byKey(const Key('asset_bundle_file_preview')),
         findsOneWidget,
       );
       expect(find.text('<binary asset preview unavailable>'), findsNothing);
+    });
+
+    testWidgets('renders SVG assets as vector images', (
+      WidgetTester tester,
+    ) async {
+      final bundle = _FakeAssetBundle({
+        'AssetManifest.json':
+            '{"images/logo.svg":["images/logo.svg"]}'.codeUnits,
+        'images/logo.svg':
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+                    '<rect width="10" height="10"/></svg>'
+                .codeUnits,
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: AssetBundlePanel(bundle: bundle)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('images/logo.svg'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('debug_file_svg_preview')), findsOneWidget);
     });
   });
 

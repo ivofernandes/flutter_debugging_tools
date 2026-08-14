@@ -34,7 +34,7 @@ screens.
 | **Shared preferences** | Inspect, add, update, and remove persisted key/value entries. | Test first-run flows, feature preferences, and corrupted or missing values. |
 | **Local storage** | A slot for an app-provided storage widget. | Expose Hive boxes, secure-storage diagnostics, caches, or repository state. |
 | **File system** | Browse the application documents directory, or a custom root directory. | Inspect downloads and generated files or validate offline data. |
-| **Asset bundle** | Search asset keys and inspect byte sizes and UTF-8 text previews. | Confirm an asset was bundled and inspect JSON/configuration assets. |
+| **Asset bundle** | Search asset keys and preview text, images, documents, and other supported file formats. | Confirm an asset was bundled and inspect its contents. |
 | **SQLite browser** | Discover common database files, inspect tables, columns, and rows, switch databases, and use an optional SQL console. | Verify migrations, investigate cached records, or compare database files. |
 | **Network request** | Call a URL from inside the app and inspect the status and a response preview. | Check device connectivity, DNS, authentication environments, or backend availability. |
 | **Network logs** | Display requests made through `DebugHttpClient`, including status/failure summaries and copyable cURL commands. | Reproduce a request outside the app or share a failing endpoint with a teammate. |
@@ -359,7 +359,7 @@ SQLite panels are enabled by default. Network and app-log panels are opt-in.
 | `showNavigationPanel` | `true` | Show named routes and optional live history. |
 | `showLocalStoragePanel` | `true` | Show the app-provided local-storage widget. |
 | `showFileSystemPanel` | `true` | Browse automatic or configured files. |
-| `showAssetBundlePanel` | `true` | Search bundled assets and preview text assets. |
+| `showAssetBundlePanel` | `true` | Search bundled assets and preview their contents. |
 | `showSQLiteBrowserPanel` | `true` | Inspect an explicit or automatically discovered database. |
 | `showNetworkRequestPanel` | `false` | Show the manual URL caller. |
 | `showNetworkLogsPanel` | `false` | Show requests recorded by `networkClient`. |
