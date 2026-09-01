@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../logging/app_log_entry.dart';
@@ -80,6 +81,8 @@ class DebuggingToolsWrapper extends StatefulWidget {
     this.routes = const {},
     this.historyObserver,
     this.navigatorKey,
+    this.navigationDefaultRoutePreferenceKey =
+        'flutter_debugging_tools.navigation.default_route',
     this.localStorageBuilder,
     this.fileSystemController,
     this.fileSystemRootDirectoryProvider,
@@ -152,6 +155,9 @@ class DebuggingToolsWrapper extends StatefulWidget {
 
   /// Optional navigator key used by [NavigationPanel] for route pushes.
   final GlobalKey<NavigatorState>? navigatorKey;
+
+  /// Persistence key used by the navigation panel's default-route feature.
+  final String navigationDefaultRoutePreferenceKey;
 
   /// Optional builder forwarded to [LocalStoragePanel].
   final WidgetBuilder? localStorageBuilder;
@@ -231,8 +237,39 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
   void initState() {
     super.initState();
     if (widget.enabled) {
+      _restoreDefaultNavigationRoute();
       _configureAutomaticStoragePanels();
     }
+  }
+
+  Future<void> _restoreDefaultNavigationRoute() async {
+    if (!widget.showNavigationPanel || widget.routes.isEmpty) return;
+
+    final preferences = await SharedPreferences.getInstance();
+    final routeName = preferences.getString(
+      widget.navigationDefaultRoutePreferenceKey,
+    );
+    if (!mounted || routeName == null) return;
+
+    final builder = widget.routes[routeName];
+    if (builder == null) {
+      await preferences.remove(widget.navigationDefaultRoutePreferenceKey);
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final navigator = widget.navigatorKey?.currentState;
+      final currentRoute = widget.historyObserver?.history.lastOrNull;
+      if (navigator != null && currentRoute?.settings.name != routeName) {
+        navigator.push<void>(
+          MaterialPageRoute<void>(
+            builder: builder,
+            settings: RouteSettings(name: routeName),
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -381,6 +418,8 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
             routes: widget.routes,
             historyObserver: widget.historyObserver,
             navigatorKey: widget.navigatorKey,
+            defaultRoutePreferenceKey:
+                widget.navigationDefaultRoutePreferenceKey,
           ),
         ),
       if (widget.showLocalStoragePanel)

@@ -329,6 +329,15 @@ For complete navigation diagnostics, use the same observer and navigator key in
 both `MaterialApp` and `DebuggingToolsWrapper`, as shown in the quick start.
 Pass only routes that should be directly reachable from the tool.
 
+Use the **Set default route** button and then tap a route in the tree to save it
+as the debugging default. On the next application start or web reload, the
+panel pushes that route once on top of the application's initial route. It does
+not replace the route table or intercept later navigation, and the default can
+be cleared from the panel. Restoration happens when `DebuggingToolsWrapper`
+starts; the navigation drawer does not need to be opened first. Use
+`navigationDefaultRoutePreferenceKey` when multiple tool configurations on the
+same origin need independent defaults.
+
 Add app-specific workflows with `extraPanels`:
 
 ```dart
@@ -357,6 +366,7 @@ SQLite panels are enabled by default. Network and app-log panels are opt-in.
 | `enabled` | `!kReleaseMode` | Mount or completely omit the debugging overlay. |
 | `showSharedPreferencesPanel` | `true` | Inspect and edit shared preferences. |
 | `showNavigationPanel` | `true` | Show named routes and optional live history. |
+| `navigationDefaultRoutePreferenceKey` | package default | Isolate the persisted navigation default for this tool configuration. |
 | `showLocalStoragePanel` | `true` | Show the app-provided local-storage widget. |
 | `showFileSystemPanel` | `true` | Browse automatic or configured files. |
 | `showAssetBundlePanel` | `true` | Search bundled assets and preview their contents. |

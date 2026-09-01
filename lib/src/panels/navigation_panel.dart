@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+const _defaultRoutePreferenceKey =
+    'flutter_debugging_tools.navigation.default_route';
 
 /// A panel that shows the named route tree, route push buttons, and supports
 /// displaying the navigation history via an optional
@@ -20,6 +24,7 @@ class NavigationPanel extends StatefulWidget {
     this.routes = const {},
     this.historyObserver,
     this.navigatorKey,
+    this.defaultRoutePreferenceKey = _defaultRoutePreferenceKey,
     super.key,
   });
 
@@ -33,11 +38,26 @@ class NavigationPanel extends StatefulWidget {
   /// outside of the app's Navigator subtree (for example inside a Drawer).
   final GlobalKey<NavigatorState>? navigatorKey;
 
+  /// Shared-preferences key used to persist the route selected as the default.
+  ///
+  /// [DebuggingToolsWrapper] reads this preference at application startup and
+  /// pushes the route once without replacing the normal navigation stack.
+  final String defaultRoutePreferenceKey;
+
   @override
   State<NavigationPanel> createState() => _NavigationPanelState();
 }
 
 class _NavigationPanelState extends State<NavigationPanel> {
+  String? _defaultRoute;
+  bool _selectingDefaultRoute = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDefaultRoute();
+  }
+
   @override
   Widget build(BuildContext context) {
     final observer = widget.historyObserver;
@@ -64,29 +84,82 @@ class _NavigationPanelState extends State<NavigationPanel> {
           const SizedBox(height: 4),
           _RouteTreeWidget(
             routes: widget.routes.keys,
-            onRouteSelected: _pushRoute,
+            onRouteSelected: _handleRouteSelected,
+            semanticsLabel: _selectingDefaultRoute
+                ? (route) => 'Set $route as default route'
+                : (route) => 'Navigate to $route',
           ),
           const Divider(),
-          const Text(
-            'Push route',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          ...widget.routes.entries.map(
-            (entry) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => _pushRoute(entry.key),
-                  child: Text(entry.key),
-                ),
+          if (_defaultRoute != null)
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.home, size: 20),
+              title: Text('Default: $_defaultRoute'),
+              trailing: IconButton(
+                tooltip: 'Clear default route',
+                onPressed: _clearDefaultRoute,
+                icon: const Icon(Icons.close),
               ),
             ),
+          OutlinedButton.icon(
+            onPressed: () => setState(
+              () => _selectingDefaultRoute = !_selectingDefaultRoute,
+            ),
+            icon: Icon(_selectingDefaultRoute ? Icons.close : Icons.home),
+            label: Text(_defaultRouteButtonLabel),
           ),
+          if (_selectingDefaultRoute)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text('Tap a route in the tree to make it the default.'),
+            ),
         ],
       ],
     );
+  }
+
+  String get _defaultRouteButtonLabel {
+    if (_selectingDefaultRoute) return 'Cancel default selection';
+    if (_defaultRoute == null) return 'Set default route';
+    return 'Change default route';
+  }
+
+  void _handleRouteSelected(String routeName) {
+    if (_selectingDefaultRoute) {
+      _setDefaultRoute(routeName);
+    } else {
+      _pushRoute(routeName);
+    }
+  }
+
+  Future<void> _loadDefaultRoute() async {
+    final preferences = await SharedPreferences.getInstance();
+    final routeName = preferences.getString(widget.defaultRoutePreferenceKey);
+    if (!mounted || routeName == null) return;
+
+    if (!widget.routes.containsKey(routeName)) {
+      await preferences.remove(widget.defaultRoutePreferenceKey);
+      return;
+    }
+    setState(() => _defaultRoute = routeName);
+  }
+
+  Future<void> _setDefaultRoute(String routeName) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(widget.defaultRoutePreferenceKey, routeName);
+    if (mounted) {
+      setState(() {
+        _defaultRoute = routeName;
+        _selectingDefaultRoute = false;
+      });
+    }
+  }
+
+  Future<void> _clearDefaultRoute() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(widget.defaultRoutePreferenceKey);
+    if (mounted) setState(() => _defaultRoute = null);
   }
 
   void _pushRoute(String routeName) {
@@ -118,10 +191,15 @@ class _NavigationPanelState extends State<NavigationPanel> {
 }
 
 class _RouteTreeWidget extends StatelessWidget {
-  const _RouteTreeWidget({required this.routes, required this.onRouteSelected});
+  const _RouteTreeWidget({
+    required this.routes,
+    required this.onRouteSelected,
+    required this.semanticsLabel,
+  });
 
   final Iterable<String> routes;
   final ValueChanged<String> onRouteSelected;
+  final String Function(String route) semanticsLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +238,7 @@ class _RouteTreeWidget extends StatelessWidget {
                       button: true,
                       link: true,
                       excludeSemantics: true,
-                      label: 'Navigate to ${node.label}',
+                      label: semanticsLabel(node.routeName!),
                       child: InkWell(
                         onTap: () => onRouteSelected(node.routeName!),
                         child: Padding(
