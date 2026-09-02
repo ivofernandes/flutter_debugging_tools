@@ -2,13 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:universal_file_previewer/universal_file_previewer.dart';
+import 'package:multi_asset_player/multi_asset_player.dart';
 
-/// Displays a file using the universal previewer, with native SVG rendering.
+/// Displays a file using the multi-asset player, with native SVG rendering.
 ///
-/// `universal_file_previewer` categorizes SVG documents as XML text. SVG is a
-/// textual format, but users generally expect to see the rendered vector, so
-/// SVG files are handled explicitly before falling back to the package.
+/// SVG files are handled explicitly so users see the rendered vector rather
+/// than its XML source.
 class DebugFilePreview extends StatelessWidget {
   const DebugFilePreview({required this.file, super.key});
 
@@ -27,14 +26,6 @@ class DebugFilePreview extends StatelessWidget {
       );
     }
 
-    return FilePreviewWidget(
-      file: file,
-      config: const PreviewConfig(
-        showToolbar: false,
-        showFileInfo: false,
-        enableZoom: true,
-        codeTheme: CodeTheme.dark,
-      ),
-    );
+    return MultiAssetPlayer(file.path);
   }
 }

@@ -1,5 +1,5 @@
 ## 0.0.3 2026-unpublished
-- Preview files and bundled assets with `universal_file_previewer`, including
+- Preview files and bundled assets with `multi_asset_player`, including
   its text, image, document, media, archive, and unknown-file presentations.
 - Render SVG files as vector images instead of displaying their XML source.
 - Added a persistent default-route selector to the navigation panel so debug
