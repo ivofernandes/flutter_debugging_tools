@@ -149,14 +149,17 @@ void main() {
           home: Scaffold(body: AssetBundlePanel(bundle: bundle)),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUntilFound(tester, find.text('2/2 asset(s)'));
 
       expect(find.text('2/2 asset(s)'), findsOneWidget);
       expect(find.text('assets/config.json'), findsOneWidget);
       expect(find.text('images/logo.png'), findsOneWidget);
 
       await tester.tap(find.text('assets/config.json'));
-      await tester.pumpAndSettle();
+      await _pumpUntilFound(
+        tester,
+        find.byKey(const Key('asset_bundle_file_preview')),
+      );
 
       expect(find.text('Selected asset: assets/config.json'), findsOneWidget);
       expect(
@@ -179,10 +182,13 @@ void main() {
           home: Scaffold(body: AssetBundlePanel(bundle: bundle)),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUntilFound(tester, find.text('images/logo.png'));
 
       await tester.tap(find.text('images/logo.png'));
-      await tester.pumpAndSettle();
+      await _pumpUntilFound(
+        tester,
+        find.byKey(const Key('asset_bundle_file_preview')),
+      );
 
       expect(find.text('Selected asset: images/logo.png'), findsOneWidget);
       expect(
@@ -209,10 +215,13 @@ void main() {
           home: Scaffold(body: AssetBundlePanel(bundle: bundle)),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUntilFound(tester, find.text('images/logo.svg'));
 
       await tester.tap(find.text('images/logo.svg'));
-      await tester.pumpAndSettle();
+      await _pumpUntilFound(
+        tester,
+        find.byKey(const Key('debug_file_svg_preview')),
+      );
 
       expect(find.byKey(const Key('debug_file_svg_preview')), findsOneWidget);
     });
@@ -322,6 +331,21 @@ void main() {
       expect(item.expanded, isTrue);
     });
   });
+}
+
+Future<void> _pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  int maxPumps = 100,
+}) async {
+  for (var pump = 0; pump < maxPumps; pump++) {
+    await tester.pump(const Duration(milliseconds: 10));
+    if (finder.evaluate().isNotEmpty) {
+      return;
+    }
+  }
+
+  fail('Timed out waiting for ${finder.description}.');
 }
 
 class _FakeAssetBundle extends CachingAssetBundle {
