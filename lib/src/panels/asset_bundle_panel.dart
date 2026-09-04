@@ -85,10 +85,7 @@ class _AssetBundlePanelState extends State<AssetBundlePanel> {
     final file = await File(
       '${previewDirectory.path}${Platform.pathSeparator}$safeName',
     ).writeAsBytes(uint8, flush: true);
-    return _AssetPreview(
-      byteLength: uint8.length,
-      file: file,
-    );
+    return _AssetPreview(byteLength: uint8.length, file: file);
   }
 
   void _selectAsset(String assetKey) {
@@ -235,10 +232,7 @@ class _AssetPreviewView extends StatelessWidget {
 }
 
 class _AssetPreview {
-  const _AssetPreview({
-    required this.byteLength,
-    required this.file,
-  });
+  const _AssetPreview({required this.byteLength, required this.file});
 
   final int byteLength;
   final File file;

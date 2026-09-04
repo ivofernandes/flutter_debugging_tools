@@ -47,9 +47,8 @@ class FileSystemDebugController extends ChangeNotifier {
   String get rootPath => _rootDirectory.path;
 
   /// Returns the on-device file represented by a relative tree path.
-  File fileAt(String relativePath) => File(
-    '${_rootDirectory.path}${Platform.pathSeparator}$relativePath',
-  );
+  File fileAt(String relativePath) =>
+      File('${_rootDirectory.path}${Platform.pathSeparator}$relativePath');
 
   /// Directories immediately inside [currentDirectoryPath].
   List<String> get childDirectories => childDirectoriesOf(currentDirectoryPath);

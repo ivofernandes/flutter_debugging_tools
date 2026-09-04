@@ -20,9 +20,8 @@ class DebugFilePreview extends StatelessWidget {
         file,
         key: const Key('debug_file_svg_preview'),
         fit: BoxFit.contain,
-        placeholderBuilder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
+        placeholderBuilder: (context) =>
+            const Center(child: CircularProgressIndicator()),
       );
     }
 

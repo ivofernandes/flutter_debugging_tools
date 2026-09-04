@@ -8,9 +8,7 @@ void main() {
 
     await tester.pumpWidget(
       const MaterialApp(
-        home: Center(
-          child: ScreenSizeSimulator(enabled: false, child: child),
-        ),
+        home: Center(child: ScreenSizeSimulator(enabled: false, child: child)),
       ),
     );
 
