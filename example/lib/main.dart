@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_debugging_tools/flutter_debugging_tools.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+import 'demo_database.dart';
 
 void main() {
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
@@ -107,9 +110,15 @@ class ExampleController extends ChangeNotifier {
     _databasePath = dbPath;
     _database = await openDatabase(
       dbPath,
-      version: 1,
-      onCreate: (db, version) async => _ensureDebugSchema(db),
-      onOpen: _ensureDebugSchema,
+      version: demoDatabaseVersion,
+      onConfigure: configureDemoDatabase,
+      onCreate: (db, version) => ensureDemoDatabaseSchema(db),
+      onUpgrade: (db, oldVersion, newVersion) =>
+          ensureDemoDatabaseSchema(db),
+      onOpen: (db) async {
+        await ensureDemoDatabaseSchema(db);
+        await seedDemoDatabase(db);
+      },
     );
     _databaseConnected = true;
     dbStatus = 'Database ready at: $dbPath';
@@ -118,16 +127,6 @@ class ExampleController extends ChangeNotifier {
       tags: ['app.database'],
     );
     await runDatabaseHealthCheck();
-  }
-
-  Future<void> _ensureDebugSchema(Database db) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS debug_events(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        label TEXT NOT NULL,
-        created_at TEXT NOT NULL
-      )
-    ''');
   }
 
   Future<void> openDummyDatabase() async {
@@ -207,9 +206,13 @@ class ExampleController extends ChangeNotifier {
       'Inserting dummy database row. path=$_databasePath',
       tags: ['app.database'],
     );
-    await db.insert('debug_events', {
-      'label': 'Dummy ping',
-      'created_at': DateTime.now().toIso8601String(),
+    final project = (await db.query('projects', columns: ['id'], limit: 1)).first;
+    await db.insert('tasks', {
+      'project_id': project['id'],
+      'title': 'Debug sample ${DateTime.now().millisecondsSinceEpoch}',
+      'status': 'todo',
+      'priority': 2,
+      'estimate_hours': 0.5,
     });
     await runDatabaseHealthCheck();
     appLogger.info(
@@ -231,13 +234,17 @@ class ExampleController extends ChangeNotifier {
       'Running database health check. path=$_databasePath',
       tags: ['app.database'],
     );
-    final rows = await db.query('debug_events', orderBy: 'id DESC', limit: 5);
-    dbStatus = rows.isEmpty
-        ? 'Connected ✅ (table exists, no rows yet).'
-        : 'Connected ✅ (${rows.length} recent rows). Latest: ${rows.first['label']} @ ${rows.first['created_at']}';
+    final summaries = await db.query('project_summary', orderBy: 'id');
+    final violations = await db.rawQuery('PRAGMA foreign_key_check');
+    final taskCount = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM tasks'),
+        ) ??
+        0;
+    dbStatus = 'Connected ✅ (${summaries.length} projects, $taskCount tasks, '
+        '${violations.length} foreign-key violations).';
     notifyListeners();
     appLogger.info(
-      'Database health check completed successfully. path=$_databasePath rows=${rows.length} status=$dbStatus',
+      'Database health check completed successfully. path=$_databasePath projects=${summaries.length} tasks=$taskCount violations=${violations.length} status=$dbStatus',
       tags: ['app.database'],
     );
   }

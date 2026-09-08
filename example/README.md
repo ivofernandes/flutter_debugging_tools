@@ -1,4 +1,12 @@
-# example
+# Example
+
+The SQLite playground uses a seeded project-management database rather than a
+single flat table. Open **SQLite screen**, then the debugging drawer, to inspect
+teams, users, projects, tasks, tags, their many-to-many junction table, indexes,
+and the aggregated `project_summary` view. The schema intentionally includes
+foreign-key delete actions, unique and check constraints, defaults, nullable
+relationships, and several SQLite value types so edits in the browser behave
+like edits against a production database.
 
 A new Flutter project.
 
