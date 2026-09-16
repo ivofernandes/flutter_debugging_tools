@@ -79,6 +79,7 @@ class DebuggingToolsWrapper extends StatefulWidget {
     this.showScreenSizeSimulator = true,
     this.extraPanels = const [],
     this.routes = const {},
+    this.excludedRoutes = const {},
     this.historyObserver,
     this.navigatorKey,
     this.navigationDefaultRoutePreferenceKey =
@@ -149,6 +150,12 @@ class DebuggingToolsWrapper extends StatefulWidget {
 
   /// Named routes forwarded to [NavigationPanel].
   final Map<String, WidgetBuilder> routes;
+
+  /// Named routes on which the debugging overlay is not mounted.
+  ///
+  /// This requires [historyObserver] to be registered with the app's
+  /// `Navigator` and passed to this wrapper. Unnamed routes cannot be matched.
+  final Set<String> excludedRoutes;
 
   /// Optional observer forwarded to [NavigationPanel] for live route-stack display.
   final NavigationHistoryObserver? historyObserver;
@@ -236,9 +243,16 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
   @override
   void initState() {
     super.initState();
+    widget.historyObserver?.addListener(_handleNavigationChanged);
     if (widget.enabled) {
       _restoreDefaultNavigationRoute();
       _configureAutomaticStoragePanels();
+    }
+  }
+
+  void _handleNavigationChanged() {
+    if (mounted && widget.excludedRoutes.isNotEmpty) {
+      setState(() {});
     }
   }
 
@@ -275,6 +289,10 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
   @override
   void didUpdateWidget(covariant DebuggingToolsWrapper oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.historyObserver != widget.historyObserver) {
+      oldWidget.historyObserver?.removeListener(_handleNavigationChanged);
+      widget.historyObserver?.addListener(_handleNavigationChanged);
+    }
     if (!widget.enabled) {
       _autoFileSystemController?.dispose();
       _autoFileSystemController = null;
@@ -302,6 +320,7 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
 
   @override
   void dispose() {
+    widget.historyObserver?.removeListener(_handleNavigationChanged);
     _autoFileSystemController?.dispose();
     _closeAutoSqliteDatabase();
     _screenSizeController.dispose();
@@ -526,7 +545,10 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.enabled) {
+    final currentRouteName = widget.historyObserver?.history.lastOrNull
+        ?.settings
+        .name;
+    if (!widget.enabled || widget.excludedRoutes.contains(currentRouteName)) {
       return widget.child ?? const SizedBox.shrink();
     }
 

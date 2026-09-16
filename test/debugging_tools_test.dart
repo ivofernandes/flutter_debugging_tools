@@ -198,6 +198,43 @@ void main() {
       expect(appSize, const Size(375, 600));
       expect(find.text('375 × 600'), findsOneWidget);
     });
+
+    testWidgets('hides the overlay on excluded named routes', (
+      WidgetTester tester,
+    ) async {
+      final observer = NavigationHistoryObserver();
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorObservers: [observer],
+          routes: {
+            '/': (_) => const TextButton(
+              onPressed: null,
+              child: Text('home'),
+            ),
+            '/private': (_) => const Scaffold(body: Text('private screen')),
+          },
+          builder: (context, child) => DebuggingToolsWrapper(
+            enabled: true,
+            historyObserver: observer,
+            excludedRoutes: const {'/private'},
+            showFileSystemPanel: false,
+            showSQLiteBrowserPanel: false,
+            child: child,
+          ),
+        ),
+      );
+
+      expect(find.byType(DebuggingSettingsButton), findsOneWidget);
+      Navigator.of(tester.element(find.text('home'))).pushNamed('/private');
+      await tester.pumpAndSettle();
+
+      expect(find.text('private screen'), findsOneWidget);
+      expect(find.byType(DebuggingSettingsButton), findsNothing);
+
+      Navigator.of(tester.element(find.text('private screen'))).pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(DebuggingSettingsButton), findsOneWidget);
+    });
   });
 
   group('DebugPanelItem', () {

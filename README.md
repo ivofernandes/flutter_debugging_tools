@@ -117,6 +117,28 @@ browser uses `getApplicationDocumentsDirectory()`, the SQLite browser searches
 that directory for `.db`, `.sqlite`, and `.sqlite3` files, and the asset browser
 reads Flutter's asset manifest.
 
+### Excluding screens
+
+To hide all debugging tools on particular screens, add their named routes to
+`excludedRoutes`. The wrapper uses `NavigationHistoryObserver` to react when
+the current route changes, so the same observer must be registered with
+`MaterialApp` and passed to the wrapper:
+
+```dart
+MaterialApp(
+  navigatorObservers: [navigationHistoryObserver],
+  builder: (context, child) => DebuggingToolsWrapper(
+    child: child,
+    historyObserver: navigationHistoryObserver,
+    excludedRoutes: const {'/login', '/payment'},
+  ),
+)
+```
+
+Excluded routes must have a non-null name (for example, by using `pushNamed` or
+setting `RouteSettings.name`). The app screen continues to render normally,
+but the debug button, drawer, and screen-size simulation are not mounted.
+
 ## Simulating screen sizes
 
 Screen-size simulation is included in `DebuggingToolsWrapper` by default. Open

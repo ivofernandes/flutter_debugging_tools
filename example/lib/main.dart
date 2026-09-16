@@ -326,6 +326,7 @@ class _ExampleAppState extends State<ExampleApp> {
           '/network': (_) => NetworkScreen(controller: _controller),
           '/state': (_) => StateMachineScreen(controller: _controller),
           '/database': (_) => DatabaseScreen(controller: _controller),
+          '/without-debug-tools': (_) => const WithoutDebugToolsScreen(),
         };
 
         return MaterialApp(
@@ -343,6 +344,7 @@ class _ExampleAppState extends State<ExampleApp> {
             navigatorKey: _navigatorKey,
             historyObserver: _historyObserver,
             routes: routes,
+            excludedRoutes: const {'/without-debug-tools'},
             networkClient: _controller.debugHttpClient,
             showNetworkRequestPanel: true,
             showNetworkLogsPanel: true,
@@ -449,7 +451,34 @@ class HomeScreen extends StatelessWidget {
                 _openRoute(context, '/database', 'Open SQLite screen'),
             child: const Text('Open SQLite screen'),
           ),
+          const SizedBox(height: 8),
+          FilledButton.tonal(
+            onPressed: () => _openRoute(
+              context,
+              '/without-debug-tools',
+              'Open screen without debug tools',
+            ),
+            child: const Text('Open screen without debug tools'),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class WithoutDebugToolsScreen extends StatelessWidget {
+  const WithoutDebugToolsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Screen without debug tools')),
+      body: const Padding(
+        padding: EdgeInsets.all(16),
+        child: Text(
+          'This named route is listed in DebuggingToolsWrapper.excludedRoutes, '
+          'so the debug button and all debugging overlays are hidden here.',
+        ),
       ),
     );
   }
