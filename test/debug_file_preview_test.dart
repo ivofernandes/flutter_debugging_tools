@@ -71,4 +71,16 @@ void main() {
     expect(find.byKey(const Key('debug_file_svg_preview')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('reports an SVG read failure without throwing', (tester) async {
+    final missingFile = File('/missing/debug-preview.svg');
+
+    await tester.pumpWidget(
+      MaterialApp(home: DebugFilePreview(file: missingFile)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Unable to load SVG preview'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

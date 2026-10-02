@@ -1,3 +1,8 @@
+## 0.0.4 unreleased
+- Fixed Flutter web compilation with `flutter_svg` 2.3.0 by loading SVG file
+  bytes explicitly instead of passing a `dart:io` `File` to `SvgPicture.file`.
+- Load SVG previews asynchronously and display a fallback when reading fails.
+
 ## 0.0.3 2026-09-04
 - Preview files and bundled assets with `multi_asset_player`, including
   its text, image, document, media, archive, and unknown-file presentations.
