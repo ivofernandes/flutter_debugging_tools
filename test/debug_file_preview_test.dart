@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_debugging_tools/src/widgets/debug_file_preview.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -48,5 +49,26 @@ void main() {
 
       expect(DebugFilePreview.sourceFor(file), file.path);
     });
+  });
+
+  testWidgets('renders SVG files from their bytes', (tester) async {
+    final directory = await Directory.systemTemp.createTemp(
+      'debug_file_preview_test',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/preview.svg')
+      ..writeAsStringSync('''
+<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">
+  <rect width="10" height="10" fill="blue" />
+</svg>
+''');
+
+    await tester.pumpWidget(
+      MaterialApp(home: DebugFilePreview(file: file)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('debug_file_svg_preview')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

@@ -32,8 +32,8 @@ class DebugFilePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (file.path.toLowerCase().endsWith('.svg')) {
-      return SvgPicture.file(
-        file,
+      return SvgPicture.memory(
+        file.readAsBytesSync(),
         key: const Key('debug_file_svg_preview'),
         fit: BoxFit.contain,
         placeholderBuilder: (context) =>
