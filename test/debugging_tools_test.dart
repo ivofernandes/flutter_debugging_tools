@@ -235,6 +235,43 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(DebuggingSettingsButton), findsOneWidget);
     });
+
+    testWidgets('handles navigation notifications during child build', (
+      WidgetTester tester,
+    ) async {
+      final observer = NavigationHistoryObserver();
+      final route = MaterialPageRoute<void>(
+        settings: const RouteSettings(name: '/private'),
+        builder: (_) => const SizedBox.shrink(),
+      );
+      var notified = false;
+      addTearDown(route.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DebuggingToolsWrapper(
+            enabled: true,
+            historyObserver: observer,
+            excludedRoutes: const {'/private'},
+            showFileSystemPanel: false,
+            showSQLiteBrowserPanel: false,
+            child: Builder(
+              builder: (context) {
+                if (!notified) {
+                  notified = true;
+                  observer.didPush(route, null);
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(DebuggingSettingsButton), findsNothing);
+    });
   });
 
   group('DebugPanelItem', () {

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
@@ -231,6 +232,7 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
   Database? _autoSqliteDatabase;
   String? _autoSqliteDatabasePath;
   double? _userDrawerWidth;
+  bool _navigationRebuildScheduled = false;
   final ScreenSizeSimulatorController _screenSizeController =
       ScreenSizeSimulatorController();
 
@@ -251,9 +253,22 @@ class _DebuggingToolsWrapperState extends State<DebuggingToolsWrapper> {
   }
 
   void _handleNavigationChanged() {
-    if (mounted && widget.excludedRoutes.isNotEmpty) {
-      setState(() {});
+    if (!mounted || widget.excludedRoutes.isEmpty) return;
+
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      if (_navigationRebuildScheduled) return;
+      _navigationRebuildScheduled = true;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _navigationRebuildScheduled = false;
+        if (mounted && widget.excludedRoutes.isNotEmpty) {
+          setState(() {});
+        }
+      });
+      return;
     }
+
+    setState(() {});
   }
 
   Future<void> _restoreDefaultNavigationRoute() async {

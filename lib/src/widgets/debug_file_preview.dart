@@ -11,6 +11,22 @@ import 'package:multi_asset_player/multi_asset_player.dart';
 class DebugFilePreview extends StatelessWidget {
   const DebugFilePreview({required this.file, super.key});
 
+  /// Returns enough vertical space for the player used by [file].
+  ///
+  /// Audio controls in [MultiAssetPlayer] need more room than the default
+  /// image and document previews.
+  static double heightFor(File file, {required double fallback}) {
+    return _isAudio(file.path) ? 360 : fallback;
+  }
+
+  /// Returns the source expected by [MultiAssetPlayer] for [file].
+  ///
+  /// Audio backends require a URI with a scheme. Other preview types continue
+  /// to receive a filesystem path, which preserves their existing behavior.
+  static String sourceFor(File file) {
+    return _isAudio(file.path) ? file.uri.toString() : file.path;
+  }
+
   final File file;
 
   @override
@@ -25,6 +41,21 @@ class DebugFilePreview extends StatelessWidget {
       );
     }
 
-    return MultiAssetPlayer(file.path);
+    return MultiAssetPlayer(sourceFor(file));
   }
 }
+
+bool _isAudio(String path) {
+  final normalizedPath = path.toLowerCase();
+  return _audioExtensions.any(normalizedPath.endsWith);
+}
+
+const _audioExtensions = <String>{
+  '.aac',
+  '.flac',
+  '.m4a',
+  '.mp3',
+  '.ogg',
+  '.opus',
+  '.wav',
+};

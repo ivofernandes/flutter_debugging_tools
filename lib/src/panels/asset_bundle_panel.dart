@@ -205,6 +205,10 @@ class _AssetPreviewView extends StatelessWidget {
         }
 
         final preview = snapshot.data!;
+        final previewHeight = DebugFilePreview.heightFor(
+          preview.file,
+          fallback: compact ? 160 : 280,
+        );
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -213,7 +217,7 @@ class _AssetPreviewView extends StatelessWidget {
             const SizedBox(height: 6),
             Container(
               width: double.infinity,
-              height: compact ? 160 : 280,
+              height: previewHeight,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.04),

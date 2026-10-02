@@ -452,7 +452,10 @@ class _FileSystemPanelState extends State<FileSystemPanel> {
               const SizedBox(height: 6),
               Container(
                 width: double.infinity,
-                height: widget.compact ? 150 : 240,
+                height: DebugFilePreview.heightFor(
+                  controller.fileAt(selected!),
+                  fallback: widget.compact ? 150 : 240,
+                ),
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.04),
